@@ -177,33 +177,33 @@ class ReadHojaDeRutaSerializer(serializers.ModelSerializer):
 class DashboardSerializer(serializers.Serializer):
     nombre = serializers.CharField(read_only=True)
     anterior = serializers.DecimalField(
-        max_digits=14, decimal_places=2, read_only=True)
+        max_digits=14, decimal_places=0, read_only=True)
     presente = serializers.DecimalField(
-        max_digits=14, decimal_places=2, read_only=True)
+        max_digits=14, decimal_places=0, read_only=True)
     presente_mes_1 = serializers.DecimalField(
-        max_digits=14, decimal_places=2, read_only=True)
+        max_digits=14, decimal_places=0, read_only=True)
     presente_mes_2 = serializers.DecimalField(
-        max_digits=14, decimal_places=2, read_only=True)
+        max_digits=14, decimal_places=0, read_only=True)
     presente_mes_3 = serializers.DecimalField(
-        max_digits=14, decimal_places=2, read_only=True)
+        max_digits=14, decimal_places=0, read_only=True)
     presente_mes_4 = serializers.DecimalField(
-        max_digits=14, decimal_places=2, read_only=True)
+        max_digits=14, decimal_places=0, read_only=True)
     presente_resto = serializers.DecimalField(
-        max_digits=14, decimal_places=2, read_only=True)
+        max_digits=14, decimal_places=0, read_only=True)
     proximo = serializers.DecimalField(
-        max_digits=14, decimal_places=2, read_only=True)
+        max_digits=14, decimal_places=0, read_only=True)
     siguiente = serializers.DecimalField(
-        max_digits=14, decimal_places=2, read_only=True)
+        max_digits=14, decimal_places=0, read_only=True)
     resto = serializers.DecimalField(
-        max_digits=14, decimal_places=2, read_only=True)
+        max_digits=14, decimal_places=0, read_only=True)
     prevision = serializers.DecimalField(
-        max_digits=14, decimal_places=2, read_only=True)
+        max_digits=14, decimal_places=0, read_only=True)
     fin = serializers.DecimalField(
-        max_digits=14, decimal_places=2, read_only=True)
+        max_digits=14, decimal_places=0, read_only=True)
     objetivos = serializers.DecimalField(
-        max_digits=14, decimal_places=2, read_only=True)
+        max_digits=14, decimal_places=0, read_only=True)
     realizado = serializers.DecimalField(
-        max_digits=14, decimal_places=2, read_only=True)
+        max_digits=14, decimal_places=0, read_only=True)
 
     class Meta:
         fields = "__all__"
