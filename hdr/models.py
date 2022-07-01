@@ -343,6 +343,68 @@ class HojaDeRutaCertificacion(models.Model):
 
     def __str__(self):
         return str(self.hoja) + ' Certificación'
+        
+class HojaDeRutaPago(models.Model):
+    hoja = models.OneToOneField("hdr.HojaDeRuta", verbose_name=_(
+        "hoja de ruta"), on_delete=models.CASCADE, related_name="pago")
+    importe_anterior = models.DecimalField(
+        _("importe de pago hasta fin del año anterior"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_presente = models.DecimalField(
+        _("importe de pago del presente año"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_mes_1 = models.DecimalField(
+        _("importe de pago para el primer mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_mes_2 = models.DecimalField(
+        _("importe de pago para el segundo mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_mes_3 = models.DecimalField(
+        _("importe de pago para el tercer mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_mes_4 = models.DecimalField(
+        _("importe de pago para el cuarto mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_resto = models.DecimalField(
+        _("importe de pago para el resto del año"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_proximo = models.DecimalField(
+        _("importe de pago para el próximo año"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_siguiente = models.DecimalField(
+        _("importe de pago para el siguiente año al próximo"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_pendiente = models.DecimalField(
+        _("importe de pago para el resto de años"), max_digits=14, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        verbose_name = _("pago de hoja de ruta")
+        verbose_name_plural = _("pagos de hojas de ruta")
+
+    def __str__(self):
+        return str(self.hoja) + ' Pago'
+
+class HojaDeRutaCapitalFinanciero(models.Model):
+    hoja = models.OneToOneField("hdr.HojaDeRuta", verbose_name=_(
+        "hoja de ruta"), on_delete=models.CASCADE, related_name="capital_financiero")
+    importe_anterior = models.DecimalField(
+        _("importe de capital financiero hasta fin del año anterior"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_presente = models.DecimalField(
+        _("importe de capital financiero del presente año"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_mes_1 = models.DecimalField(
+        _("importe de capital financiero para el primer mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_mes_2 = models.DecimalField(
+        _("importe de capital financiero para el segundo mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_mes_3 = models.DecimalField(
+        _("importe de capital financiero para el tercer mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_mes_4 = models.DecimalField(
+        _("importe de capital financiero para el cuarto mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_resto = models.DecimalField(
+        _("importe de capital financiero para el resto del año"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_proximo = models.DecimalField(
+        _("importe de capital financiero para el próximo año"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_siguiente = models.DecimalField(
+        _("importe de capital financiero para el siguiente año al próximo"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_pendiente = models.DecimalField(
+        _("importe de capital financiero para el resto de años"), max_digits=14, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        verbose_name = _("capital financiero de hoja de ruta")
+        verbose_name_plural = _("capitales financieros de hojas de ruta")
+
+    def __str__(self):
+        return str(self.hoja) + ' Capital Financiero'
 
 
 class HojaDeRutaCobro(models.Model):

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from hdr.models import HojaDeRuta, ESTADOS, HojaDeRutaProduccion, HojaDeRutaCertificacion, HojaDeRutaCobro, BI, Objetivo
+from hdr.models import HojaDeRuta, ESTADOS, HojaDeRutaProduccion, HojaDeRutaCertificacion, HojaDeRutaCobro, BI, Objetivo, HojaDeRutaPago, HojaDeRutaCapitalFinanciero
 
 
 class ActualizadorHDR(serializers.ModelSerializer):
@@ -25,6 +25,14 @@ class HojaDeRutaProduccionSerializer(ActualizadorHDR):
 class HojaDeRutaCertificacionSerializer(ActualizadorHDR):
     class Meta:
         model = HojaDeRutaCertificacion
+        fields = "__all__"
+class HojaDeRutaPagoSerializer(ActualizadorHDR):
+    class Meta:
+        model = HojaDeRutaPago
+        fields = "__all__"
+class HojaDeRutaCapitalFinancieroSerializer(ActualizadorHDR):
+    class Meta:
+        model = HojaDeRutaCapitalFinanciero
         fields = "__all__"
 
 

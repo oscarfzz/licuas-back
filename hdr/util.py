@@ -1,4 +1,4 @@
-from hdr.models import HojaDeRuta, HojaDeRutaCertificacion, HojaDeRutaCobro
+from hdr.models import HojaDeRuta, HojaDeRutaCertificacion, HojaDeRutaCobro, HojaDeRutaPago, HojaDeRutaCapitalFinanciero
 from django.conf import settings
 from general.models import Obra, Empresa
 from django.db.models import Sum, Value, F
@@ -10,6 +10,8 @@ certificacion_texto = "CERTIFICACION"
 cobro_texto = "COBRO"
 coste_directo_texto = "COSTE DIRECTO"
 ampliaciones_texto = "PRODUCCION DE AMPLIACIONES"
+pagos_texto = "PAGOS"
+capital_financiero_texto = "CAPITAL FINANCIERO"
 # Conceptos
 anterior_texto = "AnosAnteriores".upper()
 presente_texto = "ConsolidadoAnoActual".upper()
@@ -41,6 +43,8 @@ def hdrCSVImport(archivo, year, cuarto, usuario, cabecera=True, delimitador=";",
             for indice, fila in enumerate(filas):
                 certificacion = False
                 cobro = False
+                pagos = False
+                capital_financiero = False
                 if indice == 0 and cabecera:
                     pass
                 else:
@@ -78,7 +82,8 @@ def hdrCSVImport(archivo, year, cuarto, usuario, cabecera=True, delimitador=";",
                             campo = "importe_coste_delegacion_consolidado"
                         else:
                             errores.append(
-                                {"tipo": "Concepto inválido", "valor": concepto, "fila": indice}
+                                {"tipo": "Concepto inválido",
+                                    "valor": concepto, "fila": indice}
                             )
                             continue
                     elif magnitud == central_texto:
@@ -88,7 +93,8 @@ def hdrCSVImport(archivo, year, cuarto, usuario, cabecera=True, delimitador=";",
                             campo = "importe_coste_central_consolidado"
                         else:
                             errores.append(
-                                {"tipo": "Concepto inválido", "valor": concepto, "fila": indice}
+                                {"tipo": "Concepto inválido",
+                                    "valor": concepto, "fila": indice}
                             )
                             continue
                     elif magnitud == contrato_inicial_texto:
@@ -98,7 +104,8 @@ def hdrCSVImport(archivo, year, cuarto, usuario, cabecera=True, delimitador=";",
                             campo = "importe_contrato_consolidado"
                         else:
                             errores.append(
-                                {"tipo": "Concepto inválido", "valor": concepto, "fila": indice}
+                                {"tipo": "Concepto inválido",
+                                    "valor": concepto, "fila": indice}
                             )
                             continue
                     elif magnitud == certificacion_texto:
@@ -109,7 +116,32 @@ def hdrCSVImport(archivo, year, cuarto, usuario, cabecera=True, delimitador=";",
                             campo = "importe_presente"
                         else:
                             errores.append(
-                                {"tipo": "Concepto inválido", "valor": concepto, "fila": indice}
+                                {"tipo": "Concepto inválido",
+                                    "valor": concepto, "fila": indice}
+                            )
+                            continue
+                    elif magnitud == pagos_texto:
+                        pagos = True
+                        if concepto == anterior_texto:
+                            campo = "importe_anterior"
+                        elif concepto == presente_texto:
+                            campo = "importe_presente"
+                        else:
+                            errores.append(
+                                {"tipo": "Concepto inválido",
+                                    "valor": concepto, "fila": indice}
+                            )
+                            continue
+                    elif magnitud == capital_financiero_texto:
+                        capital_financiero = True
+                        if concepto == anterior_texto:
+                            campo = "importe_anterior"
+                        elif concepto == presente_texto:
+                            campo = "importe_presente"
+                        else:
+                            errores.append(
+                                {"tipo": "Concepto inválido",
+                                    "valor": concepto, "fila": indice}
                             )
                             continue
                     elif magnitud == cobro_texto:
@@ -120,7 +152,8 @@ def hdrCSVImport(archivo, year, cuarto, usuario, cabecera=True, delimitador=";",
                             campo = "importe_presente"
                         else:
                             errores.append(
-                                {"tipo": "Concepto inválido", "valor": concepto, "fila": indice}
+                                {"tipo": "Concepto inválido",
+                                    "valor": concepto, "fila": indice}
                             )
                             continue
                     elif magnitud == coste_directo_texto:
@@ -130,7 +163,8 @@ def hdrCSVImport(archivo, year, cuarto, usuario, cabecera=True, delimitador=";",
                             campo = "importe_coste_directo_consolidado"
                         else:
                             errores.append(
-                                {"tipo": "Concepto inválido", "valor": concepto, "fila": indice}
+                                {"tipo": "Concepto inválido",
+                                    "valor": concepto, "fila": indice}
                             )
                             continue
                     elif magnitud == ampliaciones_texto:
@@ -140,15 +174,18 @@ def hdrCSVImport(archivo, year, cuarto, usuario, cabecera=True, delimitador=";",
                             campo = "importe_ampliacion_consolidado"
                         else:
                             errores.append(
-                                {"tipo": "Concepto inválido", "valor": concepto, "fila": indice}
+                                {"tipo": "Concepto inválido",
+                                    "valor": concepto, "fila": indice}
                             )
                             continue
                     else:
                         errores.append(
-                            {"tipo": "Magnitud inválido", "valor": magnitud, "fila": indice}
+                            {"tipo": "Magnitud inválido",
+                                "valor": magnitud, "fila": indice}
                         )
                         continue
-                    if certificacion or cobro:
+
+                    if certificacion or cobro or pagos or capital_financiero :
                         defaults = {"usuario_creacion": usuario,
                                     "usuario_modificacion": usuario}
                     else:
@@ -163,6 +200,18 @@ def hdrCSVImport(archivo, year, cuarto, usuario, cabecera=True, delimitador=";",
                         creados += 1
                     else:
                         actualizados += 1
+                    # Actualizar o crear pagos
+                    if pagos:
+                        defaults = {campo: importe}
+                        parametros = {"hoja": hoja, "defaults": defaults}
+                        HojaDeRutaPago.objects.update_or_create(
+                            **parametros)
+                    # Actualizar o crear capital financiero
+                    if capital_financiero:
+                        defaults = {campo: importe}
+                        parametros = {"hoja": hoja, "defaults": defaults}
+                        HojaDeRutaCapitalFinanciero.objects.update_or_create(
+                            **parametros)
                     # Actualizar o crear certificacion
                     if certificacion:
                         defaults = {campo: importe}
