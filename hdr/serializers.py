@@ -85,7 +85,8 @@ class HojaDeRutaSerializer(serializers.ModelSerializer):
         model = HojaDeRuta
         # fields = "__all__"
         fields = ["id", "year", "cuarto", "fecha_fin_entrega", "estado", "gasto_delegacion", "gasto_central", "importe_contrato_anterior", "importe_contrato_consolidado", "importe_contrato_pendiente", "importe_ampliacion_anterior", "importe_ampliacion_consolidado", "importe_ampliacion_pendiente", "importe_coste_directo_anterior",
-                  "importe_coste_directo_consolidado", "importe_coste_directo_pendiente", "importe_coste_delegacion_anterior", "importe_coste_delegacion_consolidado", "importe_coste_delegacion_pendiente", "importe_coste_central_anterior", "importe_coste_central_consolidado", "importe_coste_central_pendiente", "obra", "produccion", "certificacion", "cobro"]
+                  "importe_coste_directo_consolidado", "importe_coste_directo_pendiente", "importe_coste_delegacion_anterior", "importe_coste_delegacion_consolidado", "importe_coste_delegacion_pendiente", "importe_coste_central_anterior", "importe_coste_central_consolidado", "importe_coste_central_pendiente", "obra", "produccion", "certificacion", "cobro",
+                  "periodo_cobro", "periodo_pago", "cf_acreedor", "cf_deudor"]
         depth = 2
 
 

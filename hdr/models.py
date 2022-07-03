@@ -7,6 +7,7 @@ from django.core.mail import mail_admins
 import smtplib
 from licuashdr.CustomError import CustomError
 from rest_framework import status
+from django.core.exceptions import ValidationError
 
 ESTADOS = [
     (1, 'CERRADA'),
@@ -15,6 +16,12 @@ ESTADOS = [
     (4, 'VALIDADA'),
 ]
 
+def validar_periodo(value):
+    if value not in [30, 60, 90, 120, 150, 180, 210]:
+        raise ValidationError(
+            _('El período %(value)s no es correcto'),
+            params={'value': value},
+        )
 
 class HojaDeRuta(models.Model):
     obra = models.ForeignKey("general.Obra", verbose_name=_(
@@ -62,6 +69,10 @@ class HojaDeRuta(models.Model):
     usuario_modificacion = models.ForeignKey("auth.User", verbose_name=_(
         "usuario de última modificación"), related_name="hdr_modificadas", on_delete=models.PROTECT, null=False, blank=True)
     observaciones = models.TextField(_("observaciones"), null=True, blank=True)
+    periodo_cobro = models.IntegerField(_("periodo de cobro"), default=30, validators=[validar_periodo])
+    periodo_pago = models.IntegerField(_("periodo de pago"), default=30, validators=[validar_periodo])
+    cf_acreedor = models.DecimalField(_("cf de acreedor"), max_digits=5, decimal_places=2, null=True, blank=True)
+    cf_deudor = models.DecimalField(_("cf de deudor"), max_digits=5, decimal_places=2, null=True, blank=True)
 
     @property
     def anterior(self):
