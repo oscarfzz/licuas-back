@@ -18,6 +18,7 @@ from django.db.models.functions import Cast
 from general.serializers import EmpleadoSerializer
 from django.conf import settings
 from django.db.models import Value, IntegerField
+import json
 
 class HojaDeRutaExcelViewSet(viewsets.ModelViewSet):
     queryset = HojaDeRuta.objects.all().select_related('produccion', 'certificacion', 'cobro', 'obra',
@@ -2371,7 +2372,38 @@ def tablero(request):
     retorno.append(cobro)
     retorno.append(prod_cert)
     retorno.append(cert_cobro)
-    print(retorno)
+
+    keyCalcular = [
+        'anterior',
+        'realizado',
+        'presente_mes_1',
+        'presente_mes_2',
+        'presente_mes_3',
+        'presente_mes_4',
+        'presente_resto',
+        'presente',
+        'proximo',
+        'siguiente',
+        'resto',
+        'prevision',
+        'fin',
+        'objetivos' ]
+    
+    margenBruto = {'nombre': 'MARGEN BRUTO'}
+    for key in keyCalcular:
+        _prod_cert = prod_cert[key] if prod_cert.get(key) else 0
+        _directo = directo[key] if directo.get(key)  else 0
+        margenBruto[key] = _prod_cert - _directo
+
+    margenNeto = {'nombre': 'MARGEN NETO'}
+    for key in keyCalcular:
+        _margenBruto = margenBruto[key] if margenBruto.get(key) else 0
+        _delegacion = delegacion[key] if delegacion.get(key)  else 0
+        _central = central[key] if central.get(key) else 0
+        margenNeto[key] = _margenBruto - _delegacion - _central
+
+    retorno.append(margenBruto)
+    retorno.append(margenNeto)
 
     serializado = DashboardSerializer(retorno, many=True)
     return Response(serializado.data)
