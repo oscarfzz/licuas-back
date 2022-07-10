@@ -79,6 +79,7 @@ class ReadBISerializer(serializers.ModelSerializer):
 class HojaDeRutaSerializer(serializers.ModelSerializer):
     produccion = HojaDeRutaProduccionSerializer(read_only=True)
     certificacion = HojaDeRutaCertificacionSerializer(read_only=True)
+    pago = HojaDeRutaPagoSerializer(read_only=True)
     cobro = HojaDeRutaCobroSerializer(read_only=True)
 
     class Meta:
@@ -86,7 +87,7 @@ class HojaDeRutaSerializer(serializers.ModelSerializer):
         # fields = "__all__"
         fields = ["id", "year", "cuarto", "fecha_fin_entrega", "estado", "gasto_delegacion", "gasto_central", "importe_contrato_anterior", "importe_contrato_consolidado", "importe_contrato_pendiente", "importe_ampliacion_anterior", "importe_ampliacion_consolidado", "importe_ampliacion_pendiente", "importe_coste_directo_anterior",
                   "importe_coste_directo_consolidado", "importe_coste_directo_pendiente", "importe_coste_delegacion_anterior", "importe_coste_delegacion_consolidado", "importe_coste_delegacion_pendiente", "importe_coste_central_anterior", "importe_coste_central_consolidado", "importe_coste_central_pendiente", "obra", "produccion", "certificacion", "cobro",
-                  "periodo_cobro", "periodo_pago", "cf_acreedor", "cf_deudor"]
+                  "pago", "periodo_cobro", "periodo_pago", "cf_acreedor", "cf_deudor"]
         depth = 2
 
 
@@ -95,12 +96,14 @@ class HojaDeRutaMiniSerializer(serializers.ModelSerializer):
         read_only=True, source='produccion.id')
     certificacion = serializers.IntegerField(
         read_only=True, source='certificacion.id')
+    pago = serializers.IntegerField(
+        read_only=True, source='pago.id')
     cobro = serializers.IntegerField(read_only=True, source='cobro.id')
     objetivos = ObjetivoIdSerializer(read_only=True, many=True)
 
     class Meta:
         model = HojaDeRuta
-        fields = ["id", "produccion", "certificacion", "cobro", "objetivos"]
+        fields = ["id", "produccion", "certificacion", "cobro", "objetivos", "pago"]
 
 
 class HojaDeRutaDetalleSerializer(serializers.ModelSerializer):
@@ -108,6 +111,8 @@ class HojaDeRutaDetalleSerializer(serializers.ModelSerializer):
         read_only=True, source='produccion.id')
     certificacion = serializers.IntegerField(
         read_only=True, source='certificacion.id')
+    pago = serializers.IntegerField(
+        read_only=True, source='pago.id')
     cobro = serializers.IntegerField(read_only=True, source='cobro.id')
     objetivos = ObjetivoSerializer(read_only=True, many=True)
     anterior = HojaDeRutaMiniSerializer(read_only=True)
@@ -144,6 +149,8 @@ class ReadHojaDeRutaSerializer(serializers.ModelSerializer):
         read_only=True, source='produccion.id')
     certificacion = serializers.IntegerField(
         read_only=True, source='certificacion.id')
+    pago = serializers.IntegerField(
+        read_only=True, source='pago.id')
     cobro = serializers.IntegerField(read_only=True, source='cobro.id')
     objetivos = ObjetivoIdSerializer(read_only=True, many=True)
     clasificacion = serializers.SerializerMethodField()

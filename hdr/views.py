@@ -2,8 +2,8 @@ from django.forms import DecimalField, IntegerField
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from licuashdr.Permissions import BasePermissions, PerfilAdministrador, PerfilResponsable, PerfilJefeDeObra, TienePerfil, ResponsableOSubditosRespoObraHDR
-from hdr.models import HojaDeRuta, HojaDeRutaCertificacion, HojaDeRutaProduccion, HojaDeRutaCobro, BI, Objetivo
-from hdr.serializers import HojaDeRutaSerializer, HojaDeRutaDetalleSerializer, ReadHojaDeRutaSerializer, HojaDeRutaProduccionSerializer, HojaDeRutaCertificacionSerializer, HojaDeRutaCobroSerializer, BISerializer, ReadBISerializer, ObjetivoSerializer, DashboardSerializer
+from hdr.models import HojaDeRuta, HojaDeRutaCertificacion, HojaDeRutaPago, HojaDeRutaProduccion, HojaDeRutaCobro, BI, Objetivo
+from hdr.serializers import HojaDeRutaSerializer, HojaDeRutaDetalleSerializer, ReadHojaDeRutaSerializer, HojaDeRutaProduccionSerializer, HojaDeRutaCertificacionSerializer, HojaDeRutaPagoSerializer, HojaDeRutaCobroSerializer, BISerializer, ReadBISerializer, ObjetivoSerializer, DashboardSerializer
 from hdr.util import calcularPrecioConFiltros
 from rest_framework.response import Response
 from licuashdr.util import exportar_modelo_a_excel
@@ -73,6 +73,11 @@ class HojaDeRutaCertificacionExcelViewSet(viewsets.ModelViewSet):
     serializer_class = HojaDeRutaCertificacionSerializer
     permission_classes = (ResponsableOSubditosRespoObraHDR, )
 
+class HojaDeRutaPagoExcelViewSet(viewsets.ModelViewSet):
+    queryset = HojaDeRutaPago.objects.all()
+    serializer_class = HojaDeRutaPagoSerializer
+    permission_classes = (ResponsableOSubditosRespoObraHDR, )
+
 
 class HojaDeRutaCobroExcelViewSet(viewsets.ModelViewSet):
     queryset = HojaDeRutaCobro.objects.all()
@@ -100,6 +105,11 @@ class HojaDeRutaViewSet(viewsets.ModelViewSet):
             queryset, context={'request': request}, many=True)
         return Response(serializer.data)
 
+    def perform_update(self, serializer):
+        serializer.save()
+        instance = self.get_object()
+        print('actualizando',instance.periodo_cobro)
+        print('actualizadox: ', serializer.data['periodo_cobro'])
 
 class HojaDeRutaProduccionViewSet(viewsets.ModelViewSet):
     queryset = HojaDeRutaProduccion.objects.all()
@@ -111,6 +121,32 @@ class HojaDeRutaCertificacionViewSet(viewsets.ModelViewSet):
     queryset = HojaDeRutaCertificacion.objects.all()
     serializer_class = HojaDeRutaCertificacionSerializer
     permission_classes = (BasePermissions, )
+
+class HojaDeRutaPagoViewSet(viewsets.ModelViewSet):
+    queryset = HojaDeRutaPago.objects.all()
+    serializer_class = HojaDeRutaPagoSerializer
+    permission_classes = (BasePermissions, )
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        pago = serializer.save()
+        request.data.update({"year": pago.hoja.year,"cuarto": pago.hoja.cuarto,"cod_obra": [
+            pago.hoja.obra.id
+            ]})
+        _ , _tableroCalcular = tableroCalcular(request)
+        datoDirecto = _tableroCalcular['directo']
+        pago.importe_mes_1 = datoDirecto.get('realizado',0)
+        pago.importe_mes_2 = datoDirecto.get('presente_mes_1',0)
+        pago.importe_mes_3 = datoDirecto.get('presente_mes_2',0)
+        pago.importe_mes_4 = datoDirecto.get('presente_mes_3',0)
+        pago.importe_proximo = datoDirecto.get('presente_mes_4',0)
+        pago.importe_siguiente = datoDirecto.get('proximo',0)
+        pago.importe_pendiente = datoDirecto.get('siguiente',0)
+        pago.save()
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
 
 
 class HojaDeRutaCobroViewSet(viewsets.ModelViewSet):
@@ -287,6 +323,10 @@ def dashboard(request):
 @api_view(["POST", ])
 @permission_classes([TienePerfil])
 def tablero(request):
+    serializado, _ = tableroCalcular(request)
+    return Response(serializado.data)
+
+def tableroCalcular(request):
     """
     Recibe un año y cuatrimestre y retorna las HDRs correspondientes
 
@@ -338,7 +378,7 @@ def tablero(request):
     # Comprobamos que retorna valores, sino, devolvemos error
     if not query.count() > 0:
         serializado = DashboardSerializer(None, many=True)
-        return Response(serializado.data)
+        return serializado, None
 
     # Construimos cada fila del tablero según especificaciones
     from django.db.models import Sum, Value, F, CharField, Subquery, OuterRef, DecimalField
@@ -2423,4 +2463,4 @@ def tablero(request):
     retorno.append(cert_cobro)
 
     serializado = DashboardSerializer(retorno, many=True)
-    return Response(serializado.data)
+    return serializado, {'directo': directo}
