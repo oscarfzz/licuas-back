@@ -2,7 +2,7 @@ from django.forms import DecimalField, IntegerField
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from licuashdr.Permissions import BasePermissions, PerfilAdministrador, PerfilResponsable, PerfilJefeDeObra, TienePerfil, ResponsableOSubditosRespoObraHDR
-from hdr.models import HojaDeRuta, HojaDeRutaCertificacion, HojaDeRutaPago, HojaDeRutaProduccion, HojaDeRutaCobro, BI, Objetivo
+from hdr.models import HojaDeRuta, HojaDeRutaCertificacion, HojaDeRutaPago, HojaDeRutaPagoAuxiliar, HojaDeRutaProduccion, HojaDeRutaCobro, BI, Objetivo
 from hdr.serializers import HojaDeRutaSerializer, HojaDeRutaDetalleSerializer, ReadHojaDeRutaSerializer, HojaDeRutaProduccionSerializer, HojaDeRutaCertificacionSerializer, HojaDeRutaPagoSerializer, HojaDeRutaCobroSerializer, BISerializer, ReadBISerializer, ObjetivoSerializer, DashboardSerializer
 from hdr.util import calcularPrecioConFiltros
 from rest_framework.response import Response
@@ -13,7 +13,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework import permissions
 from django.utils.translation import gettext_lazy as _
-from django.db.models import Q, When, Case
+from django.db.models import Q, When, Case, Sum
 from django.db.models.functions import Cast
 from general.serializers import EmpleadoSerializer
 from django.conf import settings
@@ -105,11 +105,20 @@ class HojaDeRutaViewSet(viewsets.ModelViewSet):
             queryset, context={'request': request}, many=True)
         return Response(serializer.data)
 
-    def perform_update(self, serializer):
-        serializer.save()
-        instance = self.get_object()
-        print('actualizando',instance.periodo_cobro)
-        print('actualizadox: ', serializer.data['periodo_cobro'])
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        hojaDeRuta = self.get_object()
+        serializer = self.get_serializer(hojaDeRuta, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        if request.data.get('periodo_cobro', False):
+            HojaDeRutaPagoAuxiliar.objects.filter(pago=hojaDeRuta.pago).delete()
+            request.data.update({"year": hojaDeRuta.pago.hoja.year,"cuarto": hojaDeRuta.pago.hoja.cuarto,"cod_obra": [
+                hojaDeRuta.pago.hoja.obra.id
+                ]})
+            actualizarPagoAuxiliar(request, hojaDeRuta.pago)
+        return Response(serializer.data)
 
 class HojaDeRutaProduccionViewSet(viewsets.ModelViewSet):
     queryset = HojaDeRutaProduccion.objects.all()
@@ -131,22 +140,123 @@ class HojaDeRutaPagoViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         pago = serializer.save()
-        request.data.update({"year": pago.hoja.year,"cuarto": pago.hoja.cuarto,"cod_obra": [
-            pago.hoja.obra.id
-            ]})
-        _ , _tableroCalcular = tableroCalcular(request)
-        datoDirecto = _tableroCalcular['directo']
-        pago.importe_mes_1 = datoDirecto.get('realizado',0)
-        pago.importe_mes_2 = datoDirecto.get('presente_mes_1',0)
-        pago.importe_mes_3 = datoDirecto.get('presente_mes_2',0)
-        pago.importe_mes_4 = datoDirecto.get('presente_mes_3',0)
-        pago.importe_proximo = datoDirecto.get('presente_mes_4',0)
-        pago.importe_siguiente = datoDirecto.get('proximo',0)
-        pago.importe_pendiente = datoDirecto.get('siguiente',0)
-        pago.save()
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        pagoSerializer = actualizarPagoAuxiliar(request, pago)
+        headers = self.get_success_headers(pagoSerializer.data)
+        return Response(pagoSerializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
+    
+def actualizarPagoAuxiliar(request, pago):
+    request.data.update({"year": pago.hoja.year,"cuarto": pago.hoja.cuarto,"cod_obra": [
+        pago.hoja.obra.id
+        ]})
+
+    _ , _tableroCalcular = tableroCalcular(request)
+    datoDirecto = _tableroCalcular['directo']
+    importe_mes_1 = datoDirecto.get('realizado',0)
+    importe_mes_2 = datoDirecto.get('presente_mes_1',0)
+    importe_mes_3 = datoDirecto.get('presente_mes_2',0)
+    importe_mes_4 = datoDirecto.get('presente_mes_3',0)
+    pago.importe_proximo = datoDirecto.get('presente_mes_4',0)
+    pago.importe_siguiente = datoDirecto.get('proximo',0)
+    pago.importe_pendiente = datoDirecto.get('siguiente',0)
+    pago.save()
+
+    analizarPeriodoCobro(pago, importe_mes_1, importe_mes_2, importe_mes_3, importe_mes_4)
+
+    sumatoriaMes = HojaDeRutaPagoAuxiliar.objects.filter(obra=pago.hoja.obra, cuarto=pago.hoja.cuarto, year=pago.hoja.year).aggregate(
+        importe_mes_1=Sum('importe_mes_1'),
+        importe_mes_2=Sum('importe_mes_2'),
+        importe_mes_3=Sum('importe_mes_3'),
+        importe_mes_4=Sum('importe_mes_4'))
+    pago.importe_mes_1 = sumatoriaMes.get('importe_mes_1',0)
+    pago.importe_mes_2 = sumatoriaMes.get('importe_mes_2',0)
+    pago.importe_mes_3 = sumatoriaMes.get('importe_mes_3',0)
+    pago.importe_mes_4 = sumatoriaMes.get('importe_mes_4',0)
+    pago.save()
+
+    pagoSerializer= HojaDeRutaPagoSerializer(pago)
+    return pagoSerializer
+
+def analizarPeriodoCobro(pago, importe_mes_1,importe_mes_2,importe_mes_3,importe_mes_4):
+    year = pago.hoja.year
+    cuarto = pago.hoja.cuarto
+
+    if pago.hoja.periodo_cobro == 30 or pago.hoja.periodo_cobro == 150:
+        if pago.hoja.periodo_cobro == 150:
+            year, cuarto = siguienteCuarto(year, cuarto)
+
+        crearPagoAuxiliar(pago, year, cuarto,
+            {
+                'mes_1': importe_mes_1,
+                'mes_2': importe_mes_2,
+                'mes_3': importe_mes_3,
+                'mes_4': importe_mes_4,
+            }
+        )
+    elif pago.hoja.periodo_cobro == 60 or pago.hoja.periodo_cobro == 180:
+        if pago.hoja.periodo_cobro == 180:
+            year, cuarto = siguienteCuarto(year, cuarto)
+
+        crearPagoAuxiliar(pago, year, cuarto,
+            {
+                'mes_2': importe_mes_1,
+                'mes_3': importe_mes_2,
+                'mes_4': importe_mes_3,
+            }
+        )
+        year, cuarto = siguienteCuarto(year, cuarto)
+        crearPagoAuxiliar(pago, year, cuarto,
+            {
+                'mes_1': importe_mes_4,
+            }
+        )
+    elif pago.hoja.periodo_cobro == 90 or pago.hoja.periodo_cobro == 210:
+        if pago.hoja.periodo_cobro == 210:
+            year, cuarto = siguienteCuarto(year, cuarto)
+
+        crearPagoAuxiliar(pago, year, cuarto,
+            {
+                'mes_3': importe_mes_1,
+                'mes_4': importe_mes_2,
+            }
+        )
+        year, cuarto = siguienteCuarto(year, cuarto)
+        crearPagoAuxiliar(pago, year, cuarto,
+            {
+                'mes_1': importe_mes_3,
+                'mes_2': importe_mes_4,
+            }
+        )
+    elif pago.hoja.periodo_cobro == 120:
+        crearPagoAuxiliar(pago, year, cuarto,
+            {
+                'mes_4': importe_mes_1,
+            }
+        )
+        year, cuarto = siguienteCuarto(year, cuarto)
+        crearPagoAuxiliar(pago, year, cuarto,
+            {
+                'mes_1': importe_mes_2,
+                'mes_2': importe_mes_3,
+                'mes_3': importe_mes_4,
+            }
+        )
+
+def crearPagoAuxiliar(pago, year, cuarto, meses):
+    pagoAuxiliar = HojaDeRutaPagoAuxiliar.objects.create(pago=pago, year=year, cuarto=cuarto, obra=pago.hoja.obra)
+    pagoAuxiliar.importe_mes_1 = meses.get('mes_1',0)
+    pagoAuxiliar.importe_mes_2 = meses.get('mes_2',0)
+    pagoAuxiliar.importe_mes_3 = meses.get('mes_3',0)
+    pagoAuxiliar.importe_mes_4 = meses.get('mes_4',0)
+    pagoAuxiliar.save()
+
+def siguienteCuarto(year, cuarto):
+        if cuarto == 1:
+            return year, 2
+        if cuarto == 2:
+            return year, 3
+        if cuarto == 3:
+            return year+1, 1
 
 
 class HojaDeRutaCobroViewSet(viewsets.ModelViewSet):

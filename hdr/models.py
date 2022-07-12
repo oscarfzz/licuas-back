@@ -386,6 +386,31 @@ class HojaDeRutaPago(models.Model):
     def __str__(self):
         return str(self.hoja) + ' Pago'
 
+class HojaDeRutaPagoAuxiliar(models.Model):
+    obra = models.ForeignKey("general.Obra", verbose_name=_(
+        "obra asociada"), on_delete=models.CASCADE, related_name="pago_auxiliar")
+    year = models.IntegerField(null=False, blank=False, verbose_name=_("año"))
+    cuarto = models.IntegerField(
+        null=False, blank=False, choices=settings.CUARTOS, verbose_name=_("cuatrimestre"))
+    pago = models.ForeignKey("hdr.HojaDeRutaPago", verbose_name=_(
+        "pago asociada"), on_delete=models.CASCADE, related_name="pago_auxiliar")
+
+    importe_mes_1 = models.DecimalField(
+        _("importe de pago para el primer mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_mes_2 = models.DecimalField(
+        _("importe de pago para el segundo mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_mes_3 = models.DecimalField(
+        _("importe de pago para el tercer mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+    importe_mes_4 = models.DecimalField(
+        _("importe de pago para el cuarto mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        verbose_name = _("pago auxiliar de hoja de ruta")
+        verbose_name_plural = _("pagos auxiliares de hojas de ruta")
+
+    def __str__(self):
+        return str(self.id) + ' Pago auxiliar'
+
 class HojaDeRutaCapitalFinanciero(models.Model):
     hoja = models.OneToOneField("hdr.HojaDeRuta", verbose_name=_(
         "hoja de ruta"), on_delete=models.CASCADE, related_name="capital_financiero")
