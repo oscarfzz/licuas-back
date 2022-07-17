@@ -113,7 +113,6 @@ class HojaDeRutaViewSet(viewsets.ModelViewSet):
         self.perform_update(serializer)
 
         if request.data.get('periodo_cobro', False):
-            HojaDeRutaPagoAuxiliar.objects.filter(pago=hojaDeRuta.pago).delete()
             request.data.update({"year": hojaDeRuta.pago.hoja.year,"cuarto": hojaDeRuta.pago.hoja.cuarto,"cod_obra": [
                 hojaDeRuta.pago.hoja.obra.id
                 ]})
@@ -125,6 +124,23 @@ class HojaDeRutaProduccionViewSet(viewsets.ModelViewSet):
     serializer_class = HojaDeRutaProduccionSerializer
     permission_classes = (TienePerfil, )
 
+    def update(self, request, *args, **kwargs):
+        data = request.data
+        partial = kwargs.pop('partial', False)
+        rutaProduccion = self.get_object()
+        serializer = self.get_serializer(rutaProduccion, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        if data.get('importe_coste_mes_1') or data.get('importe_coste_mes_2') or data.get('importe_coste_mes_3') or data.get('importe_coste_mes_4') or data.get('importe_coste_proximo') or data.get('importe_coste_siguiente'):
+            actualizarPagoAuxiliar(request, rutaProduccion.hoja.pago)
+
+        if getattr(rutaProduccion, '_prefetched_objects_cache', None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the rutaProduccion.
+            rutaProduccion._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
 
 class HojaDeRutaCertificacionViewSet(viewsets.ModelViewSet):
     queryset = HojaDeRutaCertificacion.objects.all()
@@ -144,8 +160,112 @@ class HojaDeRutaPagoViewSet(viewsets.ModelViewSet):
         headers = self.get_success_headers(pagoSerializer.data)
         return Response(pagoSerializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
-    
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        request.data.update({"pago_actualizar": False})
+        instancePago = self.get_object()
+        serializer = self.get_serializer(instancePago, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        request.data.update({"year": instancePago.hoja.year,"cuarto": instancePago.hoja.cuarto,"cod_obra": [
+            instancePago.hoja.obra.id
+            ]})
+        _ , _tableroCalcular = tableroCalcular(request)
+        datoDirecto = _tableroCalcular['directo']
+        directoFinObra = datoDirecto.get('fin',0)
+
+
+        cantidad, actual_suma = self.actualizarPagoAuxiliarXX(request, instancePago )
+        valorAsiganar = 0
+        if cantidad != 0:
+            valorAsiganar = (directoFinObra - actual_suma) / cantidad
+        cantidad, actual_suma = self.actualizarPagoAuxiliarXX(request, instancePago, valorAsiganar, True )
+
+
+        serializerPago = self.get_serializer(instancePago)
+        return Response(serializerPago.data)
+
+    def actualizarPagoAuxiliarXX(self, request, instancePago, valorModificar=0, actualizar = False):
+        cantidad = 0
+        actual_suma = 0
+        # import pdb; pdb.set_trace()
+        mes_1 = request.data.get('importe_mes_1', False)
+        mes_2 = request.data.get('importe_mes_2', False)
+        mes_3 = request.data.get('importe_mes_3', False)
+        mes_4 = request.data.get('importe_mes_4', False)
+
+        # import pdb; pdb.set_trace()
+
+        if type(mes_1) != bool:
+            if instancePago.importe_mes_2 != 0:
+                if actualizar:
+                    instancePago.importe_mes_2 += valorModificar
+                    instancePago.save()
+                cantidad = cantidad + 1
+            if instancePago.importe_mes_3 != 0:
+                if actualizar:
+                    instancePago.importe_mes_3 += valorModificar
+                    instancePago.save()
+                cantidad = cantidad + 1
+            if instancePago.importe_mes_4 != 0:
+                if actualizar:
+                    instancePago.importe_mes_4 += valorModificar
+                    instancePago.save()
+                cantidad = cantidad + 1
+        elif type(mes_2) != bool:
+            if instancePago.importe_mes_3 != 0:
+                if actualizar:
+                    instancePago.importe_mes_3 += valorModificar
+                    instancePago.save()
+                cantidad = cantidad + 1
+            if instancePago.importe_mes_4 != 0:
+                if actualizar:
+                    instancePago.importe_mes_4 += valorModificar
+                    instancePago.save()
+                cantidad = cantidad + 1
+        elif type(mes_3) != bool:
+            if instancePago.importe_mes_4 != 0:
+                if actualizar:
+                    instancePago.importe_mes_4 += valorModificar
+                    instancePago.save()
+                cantidad = cantidad + 1
+
+        actual_suma = actual_suma + instancePago.importe_anterior + instancePago.importe_presente +  instancePago.importe_mes_1 + instancePago.importe_mes_2 + instancePago.importe_mes_3 + instancePago.importe_mes_4 + instancePago.importe_proximo + instancePago.importe_siguiente + instancePago.importe_pendiente
+        instanceAuxiliares = instancePago.pago_auxiliar.all()
+        if not actualizar:
+            instanceAuxiliares = instanceAuxiliares.exclude(year=instancePago.hoja.year, cuarto=instancePago.hoja.cuarto)
+
+        for auxiliar in instanceAuxiliares:
+            if auxiliar.importe_mes_1 != 0:
+                if actualizar:
+                    auxiliar.importe_mes_1 += valorModificar
+                    auxiliar.save()
+                cantidad = cantidad + 1
+                actual_suma = actual_suma + auxiliar.importe_mes_1
+            if auxiliar.importe_mes_2 != 0:
+                if actualizar:
+                    auxiliar.importe_mes_2 += valorModificar
+                    auxiliar.save()
+                cantidad = cantidad + 1
+                actual_suma = actual_suma + auxiliar.importe_mes_2
+            if auxiliar.importe_mes_3 != 0:
+                if actualizar:
+                    auxiliar.importe_mes_3 += valorModificar
+                    auxiliar.save()
+                cantidad = cantidad + 1
+                actual_suma = actual_suma + auxiliar.importe_mes_3
+            if auxiliar.importe_mes_4 != 0:
+                if actualizar:
+                    auxiliar.importe_mes_4 += valorModificar
+                    auxiliar.save()
+                cantidad = cantidad + 1
+                actual_suma = actual_suma + auxiliar.importe_mes_4
+        return cantidad, actual_suma
+
+
 def actualizarPagoAuxiliar(request, pago):
+    HojaDeRutaPagoAuxiliar.objects.filter(pago=pago).delete()
     request.data.update({"year": pago.hoja.year,"cuarto": pago.hoja.cuarto,"cod_obra": [
         pago.hoja.obra.id
         ]})

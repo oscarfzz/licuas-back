@@ -358,26 +358,29 @@ class HojaDeRutaCertificacion(models.Model):
 class HojaDeRutaPago(models.Model):
     hoja = models.OneToOneField("hdr.HojaDeRuta", verbose_name=_(
         "hoja de ruta"), on_delete=models.CASCADE, related_name="pago")
+    # pago_actualizar = True indica que el pago debe ser actualizado con el coste directo,
+    # Si el pago es modificado manualmente se debe poner a False
+    pago_actualizar = models.BooleanField(default=True)
     importe_anterior = models.DecimalField(
-        _("importe de pago hasta fin del año anterior"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de pago hasta fin del año anterior"), max_digits=14, default=0, decimal_places=2, null=True, blank=True)
     importe_presente = models.DecimalField(
-        _("importe de pago del presente año"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de pago del presente año"), max_digits=14, default=0, decimal_places=2, null=True, blank=True)
     importe_mes_1 = models.DecimalField(
-        _("importe de pago para el primer mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de pago para el primer mes del cuatrimestre"), max_digits=14, default=0, decimal_places=2, null=True, blank=True)
     importe_mes_2 = models.DecimalField(
-        _("importe de pago para el segundo mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de pago para el segundo mes del cuatrimestre"), max_digits=14, default=0, decimal_places=2, null=True, blank=True)
     importe_mes_3 = models.DecimalField(
-        _("importe de pago para el tercer mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de pago para el tercer mes del cuatrimestre"), max_digits=14, default=0, decimal_places=2, null=True, blank=True)
     importe_mes_4 = models.DecimalField(
-        _("importe de pago para el cuarto mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de pago para el cuarto mes del cuatrimestre"), max_digits=14, default=0, decimal_places=2, null=True, blank=True)
     importe_resto = models.DecimalField(
-        _("importe de pago para el resto del año"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de pago para el resto del año"), max_digits=14, default=0, decimal_places=2, null=True, blank=True)
     importe_proximo = models.DecimalField(
-        _("importe de pago para el próximo año"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de pago para el próximo año"), max_digits=14, default=0, decimal_places=2, null=True, blank=True)
     importe_siguiente = models.DecimalField(
-        _("importe de pago para el siguiente año al próximo"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de pago para el siguiente año al próximo"), max_digits=14, default=0, decimal_places=2, null=True, blank=True)
     importe_pendiente = models.DecimalField(
-        _("importe de pago para el resto de años"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de pago para el resto de años"), max_digits=14, default=0, decimal_places=2, null=True, blank=True)
 
     class Meta:
         verbose_name = _("pago de hoja de ruta")
@@ -396,13 +399,13 @@ class HojaDeRutaPagoAuxiliar(models.Model):
         "pago asociada"), on_delete=models.CASCADE, related_name="pago_auxiliar")
 
     importe_mes_1 = models.DecimalField(
-        _("importe de pago para el primer mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de pago para el primer mes del cuatrimestre"), max_digits=14, default=0, decimal_places=2, null=True, blank=True)
     importe_mes_2 = models.DecimalField(
-        _("importe de pago para el segundo mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de pago para el segundo mes del cuatrimestre"), max_digits=14, default=0, decimal_places=2, null=True, blank=True)
     importe_mes_3 = models.DecimalField(
-        _("importe de pago para el tercer mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de pago para el tercer mes del cuatrimestre"), max_digits=14, default=0, decimal_places=2, null=True, blank=True)
     importe_mes_4 = models.DecimalField(
-        _("importe de pago para el cuarto mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de pago para el cuarto mes del cuatrimestre"), max_digits=14, default=0, decimal_places=2, null=True, blank=True)
 
     class Meta:
         verbose_name = _("pago auxiliar de hoja de ruta")
