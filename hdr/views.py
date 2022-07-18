@@ -112,7 +112,7 @@ class HojaDeRutaViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
 
-        if request.data.get('periodo_cobro', False):
+        if request.data.get('periodo_pago', False):
             request.data.update({"year": hojaDeRuta.pago.hoja.year,"cuarto": hojaDeRuta.pago.hoja.cuarto,"cod_obra": [
                 hojaDeRuta.pago.hoja.obra.id
                 ]})
@@ -161,9 +161,31 @@ class HojaDeRutaPagoViewSet(viewsets.ModelViewSet):
         return Response(pagoSerializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def update(self, request, *args, **kwargs):
+        instancePago = self.get_object()
+        
+        mes_1 = request.data.get('importe_mes_1', False)
+        mes_2 = request.data.get('importe_mes_2', False)
+        mes_3 = request.data.get('importe_mes_3', False)
+        mes_4 = request.data.get('importe_mes_4', False)
+        sinModificar = False
+        if type(mes_1) != bool:
+            if mes_1 == str(instancePago.importe_mes_1):
+                sinModificar = True
+        elif type(mes_2) != bool:
+            if mes_2 == str(instancePago.importe_mes_2):
+                sinModificar = True
+        elif type(mes_3) != bool:
+            if mes_3 == str(instancePago.importe_mes_3):
+                sinModificar = True
+        elif type(mes_4) != bool:
+            if mes_4 == str(instancePago.importe_mes_4):
+                sinModificar = True
+        if sinModificar:
+            serializerPago = self.get_serializer(instancePago)
+            return Response(serializerPago.data)
+
         partial = kwargs.pop('partial', False)
         request.data.update({"pago_actualizar": False})
-        instancePago = self.get_object()
         serializer = self.get_serializer(instancePago, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -176,26 +198,32 @@ class HojaDeRutaPagoViewSet(viewsets.ModelViewSet):
         directoFinObra = datoDirecto.get('fin',0)
 
 
-        cantidad, actual_suma = self.actualizarPagoAuxiliarXX(request, instancePago )
-        valorAsiganar = 0
-        if cantidad != 0:
-            valorAsiganar = (directoFinObra - actual_suma) / cantidad
-        cantidad, actual_suma = self.actualizarPagoAuxiliarXX(request, instancePago, valorAsiganar, True )
+        cantidad, actual_suma, actual_suma_pago = self.actualizarPagoAuxiliarXX(request, instancePago )
+        valorModificar = 0
+        borrarAuxiliar = False
 
+        if actual_suma_pago > directoFinObra:
+            borrarAuxiliar = True
+        elif cantidad != 0:
+            valorModificar = (directoFinObra - actual_suma) / cantidad
 
+        self.actualizarPagoAuxiliarXX(request, instancePago, valorModificar, True, borrarAuxiliar)
         serializerPago = self.get_serializer(instancePago)
         return Response(serializerPago.data)
 
-    def actualizarPagoAuxiliarXX(self, request, instancePago, valorModificar=0, actualizar = False):
+    def actualizarPagoAuxiliarXX(self, request, instancePago, valorModificar=0, actualizar = False, borrarAuxiliar = False):
+        if borrarAuxiliar:
+            instancePago.pago_auxiliar.all().delete()
+            return 0, 0
+
         cantidad = 0
+        actual_suma_pago = 0
         actual_suma = 0
-        # import pdb; pdb.set_trace()
         mes_1 = request.data.get('importe_mes_1', False)
         mes_2 = request.data.get('importe_mes_2', False)
         mes_3 = request.data.get('importe_mes_3', False)
         mes_4 = request.data.get('importe_mes_4', False)
 
-        # import pdb; pdb.set_trace()
 
         if type(mes_1) != bool:
             if instancePago.importe_mes_2 != 0:
@@ -231,7 +259,7 @@ class HojaDeRutaPagoViewSet(viewsets.ModelViewSet):
                     instancePago.save()
                 cantidad = cantidad + 1
 
-        actual_suma = actual_suma + instancePago.importe_anterior + instancePago.importe_presente +  instancePago.importe_mes_1 + instancePago.importe_mes_2 + instancePago.importe_mes_3 + instancePago.importe_mes_4 + instancePago.importe_proximo + instancePago.importe_siguiente + instancePago.importe_pendiente
+        actual_suma_pago = actual_suma_pago + instancePago.importe_anterior + instancePago.importe_presente +  instancePago.importe_mes_1 + instancePago.importe_mes_2 + instancePago.importe_mes_3 + instancePago.importe_mes_4 + instancePago.importe_proximo + instancePago.importe_siguiente + instancePago.importe_pendiente
         instanceAuxiliares = instancePago.pago_auxiliar.all()
         if not actualizar:
             instanceAuxiliares = instanceAuxiliares.exclude(year=instancePago.hoja.year, cuarto=instancePago.hoja.cuarto)
@@ -239,29 +267,42 @@ class HojaDeRutaPagoViewSet(viewsets.ModelViewSet):
         for auxiliar in instanceAuxiliares:
             if auxiliar.importe_mes_1 != 0:
                 if actualizar:
-                    auxiliar.importe_mes_1 += valorModificar
+                    if valorModificar < 0 and abs(valorModificar) > auxiliar.importe_mes_1:
+                        auxiliar.importe_mes_1 = 0
+                    else:
+                        auxiliar.importe_mes_1 += valorModificar
                     auxiliar.save()
                 cantidad = cantidad + 1
                 actual_suma = actual_suma + auxiliar.importe_mes_1
             if auxiliar.importe_mes_2 != 0:
                 if actualizar:
-                    auxiliar.importe_mes_2 += valorModificar
+                    if valorModificar < 0 and abs(valorModificar) > auxiliar.importe_mes_2:
+                        auxiliar.importe_mes_2 = 0
+                    else:
+                        auxiliar.importe_mes_2 += valorModificar
                     auxiliar.save()
                 cantidad = cantidad + 1
                 actual_suma = actual_suma + auxiliar.importe_mes_2
             if auxiliar.importe_mes_3 != 0:
                 if actualizar:
-                    auxiliar.importe_mes_3 += valorModificar
+                    if valorModificar < 0 and abs(valorModificar) > auxiliar.importe_mes_3:
+                        auxiliar.importe_mes_3 = 0
+                    else:
+                        auxiliar.importe_mes_3 += valorModificar
                     auxiliar.save()
                 cantidad = cantidad + 1
                 actual_suma = actual_suma + auxiliar.importe_mes_3
             if auxiliar.importe_mes_4 != 0:
                 if actualizar:
-                    auxiliar.importe_mes_4 += valorModificar
+                    if valorModificar < 0 and abs(valorModificar) > auxiliar.importe_mes_4:
+                        auxiliar.importe_mes_4 = 0
+                    else:
+                        auxiliar.importe_mes_4 += valorModificar
                     auxiliar.save()
                 cantidad = cantidad + 1
                 actual_suma = actual_suma + auxiliar.importe_mes_4
-        return cantidad, actual_suma
+        actual_suma = actual_suma + actual_suma_pago
+        return cantidad, actual_suma, actual_suma_pago
 
 
 def actualizarPagoAuxiliar(request, pago):
@@ -301,8 +342,8 @@ def analizarPeriodoCobro(pago, importe_mes_1,importe_mes_2,importe_mes_3,importe
     year = pago.hoja.year
     cuarto = pago.hoja.cuarto
 
-    if pago.hoja.periodo_cobro == 30 or pago.hoja.periodo_cobro == 150:
-        if pago.hoja.periodo_cobro == 150:
+    if pago.hoja.periodo_pago == 30 or pago.hoja.periodo_pago == 150:
+        if pago.hoja.periodo_pago == 150:
             year, cuarto = siguienteCuarto(year, cuarto)
 
         crearPagoAuxiliar(pago, year, cuarto,
@@ -313,8 +354,8 @@ def analizarPeriodoCobro(pago, importe_mes_1,importe_mes_2,importe_mes_3,importe
                 'mes_4': importe_mes_4,
             }
         )
-    elif pago.hoja.periodo_cobro == 60 or pago.hoja.periodo_cobro == 180:
-        if pago.hoja.periodo_cobro == 180:
+    elif pago.hoja.periodo_pago == 60 or pago.hoja.periodo_pago == 180:
+        if pago.hoja.periodo_pago == 180:
             year, cuarto = siguienteCuarto(year, cuarto)
 
         crearPagoAuxiliar(pago, year, cuarto,
@@ -330,8 +371,8 @@ def analizarPeriodoCobro(pago, importe_mes_1,importe_mes_2,importe_mes_3,importe
                 'mes_1': importe_mes_4,
             }
         )
-    elif pago.hoja.periodo_cobro == 90 or pago.hoja.periodo_cobro == 210:
-        if pago.hoja.periodo_cobro == 210:
+    elif pago.hoja.periodo_pago == 90 or pago.hoja.periodo_pago == 210:
+        if pago.hoja.periodo_pago == 210:
             year, cuarto = siguienteCuarto(year, cuarto)
 
         crearPagoAuxiliar(pago, year, cuarto,
@@ -347,7 +388,7 @@ def analizarPeriodoCobro(pago, importe_mes_1,importe_mes_2,importe_mes_3,importe
                 'mes_2': importe_mes_4,
             }
         )
-    elif pago.hoja.periodo_cobro == 120:
+    elif pago.hoja.periodo_pago == 120:
         crearPagoAuxiliar(pago, year, cuarto,
             {
                 'mes_4': importe_mes_1,
