@@ -116,8 +116,14 @@ class HojaDeRutaViewSet(viewsets.ModelViewSet):
             request.data.update({"year": hojaDeRuta.pago.hoja.year,"cuarto": hojaDeRuta.pago.hoja.cuarto,"cod_obra": [
                 hojaDeRuta.pago.hoja.obra.id
                 ]})
-            print(' actualizarPagoAuxiliar se modifico el periodo -- HojaDeRutaViewSet ')
+            print(' ##2 actualizarPagoAuxiliar se modifico el periodo -- HojaDeRutaViewSet ')
             actualizarPagoAuxiliar(request, hojaDeRuta.pago)
+        elif request.data.get('periodo_cobro', False):
+            request.data.update({"year": hojaDeRuta.cobro.hoja.year,"cuarto": hojaDeRuta.cobro.hoja.cuarto,"cod_obra": [
+                hojaDeRuta.cobro.hoja.obra.id
+                ]})
+            print(' ##2 actualizarCobroAuxiliar se modifico el periodo -- HojaDeRutaViewSet ')
+            actualizarCobroAuxiliar(request, hojaDeRuta.cobro)
         return Response(serializer.data)
 
 class HojaDeRutaProduccionViewSet(viewsets.ModelViewSet): #yyy
@@ -134,20 +140,41 @@ class HojaDeRutaProduccionViewSet(viewsets.ModelViewSet): #yyy
         self.perform_update(serializer)
 
         if data.get('importe_coste_mes_1') or data.get('importe_coste_mes_2') or data.get('importe_coste_mes_3') or data.get('importe_coste_mes_4') or data.get('importe_coste_proximo') or data.get('importe_coste_siguiente'):
-            print(' actualizarPagoAuxiliar se modifico el valor vinculado HojaDeRutaProduccionViewSet ')
+            print(' #33 actualizarPagoAuxiliar se modifico el valor vinculado HojaDeRutaProduccionViewSet ')
             actualizarPagoAuxiliar(request, rutaProduccion.hoja.pago)
-
-        if getattr(rutaProduccion, '_prefetched_objects_cache', None):
-            # If 'prefetch_related' has been applied to a queryset, we need to
-            # forcibly invalidate the prefetch cache on the rutaProduccion.
-            rutaProduccion._prefetched_objects_cache = {}
-
         return Response(serializer.data)
 
 class HojaDeRutaCertificacionViewSet(viewsets.ModelViewSet): #xxx
     queryset = HojaDeRutaCertificacion.objects.all()
     serializer_class = HojaDeRutaCertificacionSerializer
     permission_classes = (BasePermissions, )
+    
+    def update(self, request, *args, **kwargs):
+        data = request.data
+        partial = kwargs.pop('partial', False)
+        rutaCertificacion = self.get_object()
+        serializer = self.get_serializer(rutaCertificacion, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        print(' ##3 actualizarCobroAuxiliar se modifico el valor vinculado HojaDeRutaCertificacionViewSet')
+        actualizarCobroAuxiliar(request, rutaCertificacion.hoja.cobro)
+        return Response(serializer.data)
+
+class HojaDeRutaCobroViewSet(viewsets.ModelViewSet):
+    queryset = HojaDeRutaCobro.objects.all()
+    serializer_class = HojaDeRutaCobroSerializer
+    permission_classes = (TienePerfil, )
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        cobro = serializer.save()
+        print(' ##1 actualizarCobroAuxiliar creando el HojaDeRutaCobroViewSet ')
+        cobroSerializer = actualizarCobroAuxiliar(request, cobro)
+        headers = self.get_success_headers(cobroSerializer.data)
+        return Response(cobroSerializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
 
 class HojaDeRutaPagoViewSet(viewsets.ModelViewSet):
     queryset = HojaDeRutaPago.objects.all()
@@ -158,7 +185,7 @@ class HojaDeRutaPagoViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         pago = serializer.save()
-        print(' actualizarPagoAuxiliar creando el HojaDeRutaPagoViewSet ')
+        print(' ##1 actualizarPagoAuxiliar creando el HojaDeRutaPagoViewSet ')
         pagoSerializer = actualizarPagoAuxiliar(request, pago)
         headers = self.get_success_headers(pagoSerializer.data)
         return Response(pagoSerializer.data, status=status.HTTP_201_CREATED, headers=headers)
@@ -201,7 +228,7 @@ class HojaDeRutaPagoViewSet(viewsets.ModelViewSet):
         directoFinObra = datoDirecto.get('fin',0)
 
 
-        cantidad, actual_suma, actual_suma_pago = self.actualizarPagoAuxiliarXX(request, instancePago )
+        cantidad, actual_suma, actual_suma_pago = self.actualizarInstanciaAuxiliar(request, instancePago )
         valorModificar = 0
         borrarAuxiliar = False
 
@@ -210,11 +237,11 @@ class HojaDeRutaPagoViewSet(viewsets.ModelViewSet):
         elif cantidad != 0:
             valorModificar = (directoFinObra - actual_suma) / cantidad
 
-        self.actualizarPagoAuxiliarXX(request, instancePago, valorModificar, True, borrarAuxiliar)
+        self.actualizarInstanciaAuxiliar(request, instancePago, valorModificar, True, borrarAuxiliar)
         serializerPago = self.get_serializer(instancePago)
         return Response(serializerPago.data)
 
-    def actualizarPagoAuxiliarXX(self, request, instancePago, valorModificar=0, actualizar = False, borrarAuxiliar = False):
+    def actualizarInstanciaAuxiliar(self, request, instancePago, valorModificar=0, actualizar = False, borrarAuxiliar = False):
         if borrarAuxiliar:
             instancePago.pago_auxiliar.all().delete()
             return 0, 0
@@ -307,6 +334,41 @@ class HojaDeRutaPagoViewSet(viewsets.ModelViewSet):
         actual_suma = actual_suma + actual_suma_pago
         return cantidad, actual_suma, actual_suma_pago
 
+def actualizarCobroAuxiliar(request, cobro):
+    HojaDeRutaCobroAuxiliar.objects.filter(cobro=cobro).delete()
+    certificacion = cobro.hoja.certificacion
+
+    cobro.importe_anterior = certificacion.importe_anterior if type(certificacion.importe_anterior) != type(None) else 0
+    cobro.importe_presente = certificacion.importe_presente if type(certificacion.importe_presente) != type(None) else 0
+    importe_mes_1 = certificacion.importe_mes_1 if type(certificacion.importe_mes_1) != type(None) else 0 
+    importe_mes_2 = certificacion.importe_mes_2 if type(certificacion.importe_mes_2) != type(None) else 0 
+    importe_mes_3 = certificacion.importe_mes_3 if type(certificacion.importe_mes_3) != type(None) else 0 
+    importe_mes_4 = certificacion.importe_mes_4 if type(certificacion.importe_mes_4) != type(None) else 0 
+    cobro.importe_resto = certificacion.importe_resto if type(certificacion.importe_resto) != type(None) else 0 
+    cobro.importe_proximo = certificacion.importe_proximo if type(certificacion.importe_proximo) != type(None) else 0 
+    cobro.importe_siguiente = certificacion.importe_siguiente if type(certificacion.importe_siguiente) != type(None) else 0 
+    cobro.importe_pendiente = certificacion.importe_pendiente if type(certificacion.importe_pendiente) != type(None) else 0 
+    cobro.save()
+
+    print('importe_mes_1: ' ,importe_mes_1)
+    print('importe_mes_2: ' ,importe_mes_2)
+    print('importe_mes_3: ' ,importe_mes_3)
+    print('importe_mes_4: ' ,importe_mes_4)
+
+    analizarPeriodo(cobro, importe_mes_1, importe_mes_2, importe_mes_3, importe_mes_4, 'cobro')
+    sumatoriaMes = HojaDeRutaCobroAuxiliar.objects.filter(obra=cobro.hoja.obra, cuarto=cobro.hoja.cuarto, year=cobro.hoja.year).aggregate(
+        importe_mes_1=Sum('importe_mes_1'),
+        importe_mes_2=Sum('importe_mes_2'),
+        importe_mes_3=Sum('importe_mes_3'),
+        importe_mes_4=Sum('importe_mes_4'))
+    cobro.importe_mes_1 = sumatoriaMes.get('importe_mes_1',0)
+    cobro.importe_mes_2 = sumatoriaMes.get('importe_mes_2',0)
+    cobro.importe_mes_3 = sumatoriaMes.get('importe_mes_3',0)
+    cobro.importe_mes_4 = sumatoriaMes.get('importe_mes_4',0)
+    cobro.save()
+
+    cobroSerializer= HojaDeRutaCobroSerializer(cobro)
+    return cobroSerializer
 
 def actualizarPagoAuxiliar(request, pago):
     HojaDeRutaPagoAuxiliar.objects.filter(pago=pago).delete()
@@ -358,66 +420,52 @@ def analizarPeriodo(instancia, importe_mes_1,importe_mes_2,importe_mes_3,importe
     if periodo == 30 or periodo == 150:
         if periodo == 150:
             year, cuarto = siguienteCuarto(year, cuarto)
-        meses = {}
-        if tipo == 'pago':
-            meses = {
-                'mes_1': importe_mes_1,
-                'mes_2': importe_mes_2,
-                'mes_3': importe_mes_3,
-                'mes_4': importe_mes_4,
-            }
+        meses = {
+            'mes_1': importe_mes_1,
+            'mes_2': importe_mes_2,
+            'mes_3': importe_mes_3,
+            'mes_4': importe_mes_4,
+        }
         crearAuxiliar(instancia, year, cuarto, meses, tipo)
     elif periodo == 60 or periodo == 180:
         if periodo == 180:
             year, cuarto = siguienteCuarto(year, cuarto)
-        meses = {}
-        if tipo == 'pago':
-            meses = {
-                'mes_2': importe_mes_1,
-                'mes_3': importe_mes_2,
-                'mes_4': importe_mes_3,
-            }
+        meses = {
+            'mes_2': importe_mes_1,
+            'mes_3': importe_mes_2,
+            'mes_4': importe_mes_3,
+        }
         crearAuxiliar(instancia, year, cuarto, meses, tipo)
         year, cuarto = siguienteCuarto(year, cuarto)
-        meses = {}
-        if tipo == 'pago':
-            meses = {
-                'mes_1': importe_mes_4,
-            }
+        meses = {
+            'mes_1': importe_mes_4,
+        }
         crearAuxiliar(instancia, year, cuarto, meses, tipo)
     elif periodo == 90 or periodo == 210:
         if periodo == 210:
             year, cuarto = siguienteCuarto(year, cuarto)
-        meses = {}
-        if tipo == 'pago':
-            meses = {
-                    'mes_3': importe_mes_1,
-                    'mes_4': importe_mes_2,
-                }
+        meses = {
+            'mes_3': importe_mes_1,
+            'mes_4': importe_mes_2,
+        }
         crearAuxiliar(instancia, year, cuarto, meses, tipo)
         year, cuarto = siguienteCuarto(year, cuarto)
-        meses = {}
-        if tipo == 'pago':
-            meses = {
-                    'mes_1': importe_mes_3,
-                    'mes_2': importe_mes_4,
-                }
+        meses = {
+            'mes_1': importe_mes_3,
+            'mes_2': importe_mes_4,
+        }
         crearAuxiliar(instancia, year, cuarto, meses, tipo)
     elif periodo == 120:
-        meses = {}
-        if tipo == 'pago':
-            meses = {
-                    'mes_4': importe_mes_1,
-                }
+        meses = {
+            'mes_4': importe_mes_1,
+        }
         crearAuxiliar(instancia, year, cuarto, meses, tipo)
         year, cuarto = siguienteCuarto(year, cuarto)
-        meses = {}
-        if tipo == 'pago':
-            meses = {
-                    'mes_1': importe_mes_2,
-                    'mes_2': importe_mes_3,
-                    'mes_3': importe_mes_4,
-                }
+        meses = {
+            'mes_1': importe_mes_2,
+            'mes_2': importe_mes_3,
+            'mes_3': importe_mes_4,
+        }
         crearAuxiliar(instancia, year, cuarto, meses, tipo)
 
 def crearAuxiliar(instancia, year, cuarto, meses, tipo):
@@ -450,11 +498,6 @@ def siguienteCuarto(year, cuarto):
         if cuarto == 3:
             return year+1, 1
 
-
-class HojaDeRutaCobroViewSet(viewsets.ModelViewSet):
-    queryset = HojaDeRutaCobro.objects.all()
-    serializer_class = HojaDeRutaCobroSerializer
-    permission_classes = (TienePerfil, )
 
 
 class ObjetivoViewSet(viewsets.ModelViewSet):

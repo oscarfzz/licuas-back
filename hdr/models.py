@@ -449,6 +449,9 @@ class HojaDeRutaCapitalFinanciero(models.Model):
 class HojaDeRutaCobro(models.Model):
     hoja = models.OneToOneField("hdr.HojaDeRuta", verbose_name=_(
         "hoja de ruta"), on_delete=models.CASCADE, related_name="cobro")
+    # cobro_actualizar = True indica que el cobro debe ser actualizado con certificacion,
+    # Si el cobro es modificado manualmente se debe poner a False
+    cobro_actualizar = models.BooleanField(default=True)
     importe_anterior = models.DecimalField(
         _("importe de cobro hasta fin del año anterior"), max_digits=14, decimal_places=2, default=0, null=True, blank=True)
     importe_presente = models.DecimalField(
