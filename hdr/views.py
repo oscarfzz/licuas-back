@@ -2,7 +2,7 @@ from django.forms import DecimalField, IntegerField
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from licuashdr.Permissions import BasePermissions, PerfilAdministrador, PerfilResponsable, PerfilJefeDeObra, TienePerfil, ResponsableOSubditosRespoObraHDR
-from hdr.models import HojaDeRuta, HojaDeRutaCertificacion, HojaDeRutaPago, HojaDeRutaPagoAuxiliar, HojaDeRutaProduccion, HojaDeRutaCobro, BI, Objetivo
+from hdr.models import HojaDeRuta, HojaDeRutaCertificacion, HojaDeRutaPago, HojaDeRutaPagoAuxiliar, HojaDeRutaCobroAuxiliar, HojaDeRutaProduccion, HojaDeRutaCobro, BI, Objetivo
 from hdr.serializers import HojaDeRutaSerializer, HojaDeRutaDetalleSerializer, ReadHojaDeRutaSerializer, HojaDeRutaProduccionSerializer, HojaDeRutaCertificacionSerializer, HojaDeRutaPagoSerializer, HojaDeRutaCobroSerializer, BISerializer, ReadBISerializer, ObjetivoSerializer, DashboardSerializer
 from hdr.util import calcularPrecioConFiltros
 from rest_framework.response import Response
@@ -116,10 +116,11 @@ class HojaDeRutaViewSet(viewsets.ModelViewSet):
             request.data.update({"year": hojaDeRuta.pago.hoja.year,"cuarto": hojaDeRuta.pago.hoja.cuarto,"cod_obra": [
                 hojaDeRuta.pago.hoja.obra.id
                 ]})
+            print(' actualizarPagoAuxiliar se modifico el periodo -- HojaDeRutaViewSet ')
             actualizarPagoAuxiliar(request, hojaDeRuta.pago)
         return Response(serializer.data)
 
-class HojaDeRutaProduccionViewSet(viewsets.ModelViewSet):
+class HojaDeRutaProduccionViewSet(viewsets.ModelViewSet): #yyy
     queryset = HojaDeRutaProduccion.objects.all()
     serializer_class = HojaDeRutaProduccionSerializer
     permission_classes = (TienePerfil, )
@@ -133,6 +134,7 @@ class HojaDeRutaProduccionViewSet(viewsets.ModelViewSet):
         self.perform_update(serializer)
 
         if data.get('importe_coste_mes_1') or data.get('importe_coste_mes_2') or data.get('importe_coste_mes_3') or data.get('importe_coste_mes_4') or data.get('importe_coste_proximo') or data.get('importe_coste_siguiente'):
+            print(' actualizarPagoAuxiliar se modifico el valor vinculado HojaDeRutaProduccionViewSet ')
             actualizarPagoAuxiliar(request, rutaProduccion.hoja.pago)
 
         if getattr(rutaProduccion, '_prefetched_objects_cache', None):
@@ -142,7 +144,7 @@ class HojaDeRutaProduccionViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-class HojaDeRutaCertificacionViewSet(viewsets.ModelViewSet):
+class HojaDeRutaCertificacionViewSet(viewsets.ModelViewSet): #xxx
     queryset = HojaDeRutaCertificacion.objects.all()
     serializer_class = HojaDeRutaCertificacionSerializer
     permission_classes = (BasePermissions, )
@@ -156,6 +158,7 @@ class HojaDeRutaPagoViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         pago = serializer.save()
+        print(' actualizarPagoAuxiliar creando el HojaDeRutaPagoViewSet ')
         pagoSerializer = actualizarPagoAuxiliar(request, pago)
         headers = self.get_success_headers(pagoSerializer.data)
         return Response(pagoSerializer.data, status=status.HTTP_201_CREATED, headers=headers)
@@ -322,7 +325,7 @@ def actualizarPagoAuxiliar(request, pago):
     pago.importe_pendiente = datoDirecto.get('siguiente',0)
     pago.save()
 
-    analizarPeriodoCobro(pago, importe_mes_1, importe_mes_2, importe_mes_3, importe_mes_4)
+    analizarPeriodo(pago, importe_mes_1, importe_mes_2, importe_mes_3, importe_mes_4, 'pago')
 
     sumatoriaMes = HojaDeRutaPagoAuxiliar.objects.filter(obra=pago.hoja.obra, cuarto=pago.hoja.cuarto, year=pago.hoja.year).aggregate(
         importe_mes_1=Sum('importe_mes_1'),
@@ -338,78 +341,106 @@ def actualizarPagoAuxiliar(request, pago):
     pagoSerializer= HojaDeRutaPagoSerializer(pago)
     return pagoSerializer
 
-def analizarPeriodoCobro(pago, importe_mes_1,importe_mes_2,importe_mes_3,importe_mes_4):
-    year = pago.hoja.year
-    cuarto = pago.hoja.cuarto
+def analizarPeriodo(instancia, importe_mes_1,importe_mes_2,importe_mes_3,importe_mes_4, tipo):
+    if tipo not in ['pago', 'cobro']:
+        print('-- # Tipo no valido --')
+        return
+    year = instancia.hoja.year
+    cuarto = instancia.hoja.cuarto
 
-    if pago.hoja.periodo_pago == 30 or pago.hoja.periodo_pago == 150:
-        if pago.hoja.periodo_pago == 150:
+    periodo = 0
+    if tipo == 'pago':
+        periodo = instancia.hoja.periodo_pago
+    if tipo == 'cobro':
+        periodo = instancia.hoja.periodo_cobro
+
+
+    if periodo == 30 or periodo == 150:
+        if periodo == 150:
             year, cuarto = siguienteCuarto(year, cuarto)
-
-        crearPagoAuxiliar(pago, year, cuarto,
-            {
+        meses = {}
+        if tipo == 'pago':
+            meses = {
                 'mes_1': importe_mes_1,
                 'mes_2': importe_mes_2,
                 'mes_3': importe_mes_3,
                 'mes_4': importe_mes_4,
             }
-        )
-    elif pago.hoja.periodo_pago == 60 or pago.hoja.periodo_pago == 180:
-        if pago.hoja.periodo_pago == 180:
+        crearAuxiliar(instancia, year, cuarto, meses, tipo)
+    elif periodo == 60 or periodo == 180:
+        if periodo == 180:
             year, cuarto = siguienteCuarto(year, cuarto)
-
-        crearPagoAuxiliar(pago, year, cuarto,
-            {
+        meses = {}
+        if tipo == 'pago':
+            meses = {
                 'mes_2': importe_mes_1,
                 'mes_3': importe_mes_2,
                 'mes_4': importe_mes_3,
             }
-        )
+        crearAuxiliar(instancia, year, cuarto, meses, tipo)
         year, cuarto = siguienteCuarto(year, cuarto)
-        crearPagoAuxiliar(pago, year, cuarto,
-            {
+        meses = {}
+        if tipo == 'pago':
+            meses = {
                 'mes_1': importe_mes_4,
             }
-        )
-    elif pago.hoja.periodo_pago == 90 or pago.hoja.periodo_pago == 210:
-        if pago.hoja.periodo_pago == 210:
+        crearAuxiliar(instancia, year, cuarto, meses, tipo)
+    elif periodo == 90 or periodo == 210:
+        if periodo == 210:
             year, cuarto = siguienteCuarto(year, cuarto)
-
-        crearPagoAuxiliar(pago, year, cuarto,
-            {
-                'mes_3': importe_mes_1,
-                'mes_4': importe_mes_2,
-            }
-        )
+        meses = {}
+        if tipo == 'pago':
+            meses = {
+                    'mes_3': importe_mes_1,
+                    'mes_4': importe_mes_2,
+                }
+        crearAuxiliar(instancia, year, cuarto, meses, tipo)
         year, cuarto = siguienteCuarto(year, cuarto)
-        crearPagoAuxiliar(pago, year, cuarto,
-            {
-                'mes_1': importe_mes_3,
-                'mes_2': importe_mes_4,
-            }
-        )
-    elif pago.hoja.periodo_pago == 120:
-        crearPagoAuxiliar(pago, year, cuarto,
-            {
-                'mes_4': importe_mes_1,
-            }
-        )
+        meses = {}
+        if tipo == 'pago':
+            meses = {
+                    'mes_1': importe_mes_3,
+                    'mes_2': importe_mes_4,
+                }
+        crearAuxiliar(instancia, year, cuarto, meses, tipo)
+    elif periodo == 120:
+        meses = {}
+        if tipo == 'pago':
+            meses = {
+                    'mes_4': importe_mes_1,
+                }
+        crearAuxiliar(instancia, year, cuarto, meses, tipo)
         year, cuarto = siguienteCuarto(year, cuarto)
-        crearPagoAuxiliar(pago, year, cuarto,
-            {
-                'mes_1': importe_mes_2,
-                'mes_2': importe_mes_3,
-                'mes_3': importe_mes_4,
-            }
-        )
+        meses = {}
+        if tipo == 'pago':
+            meses = {
+                    'mes_1': importe_mes_2,
+                    'mes_2': importe_mes_3,
+                    'mes_3': importe_mes_4,
+                }
+        crearAuxiliar(instancia, year, cuarto, meses, tipo)
 
-def crearPagoAuxiliar(pago, year, cuarto, meses):
-    pagoAuxiliar = HojaDeRutaPagoAuxiliar.objects.create(pago=pago, year=year, cuarto=cuarto, obra=pago.hoja.obra)
-    pagoAuxiliar.importe_mes_1 = meses.get('mes_1',0)
-    pagoAuxiliar.importe_mes_2 = meses.get('mes_2',0)
-    pagoAuxiliar.importe_mes_3 = meses.get('mes_3',0)
-    pagoAuxiliar.importe_mes_4 = meses.get('mes_4',0)
-    pagoAuxiliar.save()
+def crearAuxiliar(instancia, year, cuarto, meses, tipo):
+    if tipo not in ['pago', 'cobro']:
+        print('-- Tipo no valido --')
+        return
+    mes_1 = meses.get('mes_1',0)
+    mes_2 = meses.get('mes_2',0)
+    mes_3 = meses.get('mes_3',0)
+    mes_4 = meses.get('mes_4',0)
+
+    total = mes_1 + mes_2 + mes_3 + mes_4
+    if total != 0:
+        if tipo == 'pago':
+            instanciaAuxiliar = HojaDeRutaPagoAuxiliar.objects.create(pago=instancia, year=year, cuarto=cuarto, obra=instancia.hoja.obra)
+        if tipo == 'cobro':
+            instanciaAuxiliar = HojaDeRutaCobroAuxiliar.objects.create(cobro=instancia, year=year, cuarto=cuarto, obra=instancia.hoja.obra)
+
+        instanciaAuxiliar.importe_mes_1 = mes_1
+        instanciaAuxiliar.importe_mes_2 = mes_2
+        instanciaAuxiliar.importe_mes_3 = mes_3
+        instanciaAuxiliar.importe_mes_4 = mes_4
+        instanciaAuxiliar.save()
 
 def siguienteCuarto(year, cuarto):
         if cuarto == 1:

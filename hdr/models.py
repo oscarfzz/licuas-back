@@ -450,25 +450,25 @@ class HojaDeRutaCobro(models.Model):
     hoja = models.OneToOneField("hdr.HojaDeRuta", verbose_name=_(
         "hoja de ruta"), on_delete=models.CASCADE, related_name="cobro")
     importe_anterior = models.DecimalField(
-        _("importe de cobro hasta fin del año anterior"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de cobro hasta fin del año anterior"), max_digits=14, decimal_places=2, default=0, null=True, blank=True)
     importe_presente = models.DecimalField(
-        _("importe de cobro del presente año"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de cobro del presente año"), max_digits=14, decimal_places=2, default=0, null=True, blank=True)
     importe_mes_1 = models.DecimalField(
-        _("importe de cobro para el primer mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de cobro para el primer mes del cuatrimestre"), max_digits=14, decimal_places=2, default=0, null=True, blank=True)
     importe_mes_2 = models.DecimalField(
-        _("importe de cobro para el segundo mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de cobro para el segundo mes del cuatrimestre"), max_digits=14, decimal_places=2, default=0, null=True, blank=True)
     importe_mes_3 = models.DecimalField(
-        _("importe de cobro para el tercer mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de cobro para el tercer mes del cuatrimestre"), max_digits=14, decimal_places=2, default=0, null=True, blank=True)
     importe_mes_4 = models.DecimalField(
-        _("importe de cobro para el cuarto mes del cuatrimestre"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de cobro para el cuarto mes del cuatrimestre"), max_digits=14, decimal_places=2, default=0, null=True, blank=True)
     importe_resto = models.DecimalField(
-        _("importe de cobro para el resto del año"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de cobro para el resto del año"), max_digits=14, decimal_places=2, default=0, null=True, blank=True)
     importe_proximo = models.DecimalField(
-        _("importe de cobro para el próximo año"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de cobro para el próximo año"), max_digits=14, decimal_places=2, default=0, null=True, blank=True)
     importe_siguiente = models.DecimalField(
-        _("importe de cobro para el siguiente año al próximo"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de cobro para el siguiente año al próximo"), max_digits=14, decimal_places=2, default=0, null=True, blank=True)
     importe_pendiente = models.DecimalField(
-        _("importe de cobro para el resto de años"), max_digits=14, decimal_places=2, null=True, blank=True)
+        _("importe de cobro para el resto de años"), max_digits=14, decimal_places=2, default=0, null=True, blank=True)
 
     class Meta:
         verbose_name = _("cobro de hoja de ruta")
@@ -476,6 +476,31 @@ class HojaDeRutaCobro(models.Model):
 
     def __str__(self):
         return str(self.hoja) + ' Cobro'
+        
+class HojaDeRutaCobroAuxiliar(models.Model):
+    obra = models.ForeignKey("general.Obra", verbose_name=_(
+        "obra asociada"), on_delete=models.CASCADE, related_name="cobro_auxiliar")
+    year = models.IntegerField(null=False, blank=False, verbose_name=_("año"))
+    cuarto = models.IntegerField(
+        null=False, blank=False, choices=settings.CUARTOS, verbose_name=_("cuatrimestre"))
+    cobro = models.ForeignKey("hdr.HojaDeRutaCobro", verbose_name=_(
+        "cobro asociada"), on_delete=models.CASCADE, related_name="cobro_auxiliar")
+
+    importe_mes_1 = models.DecimalField(
+        _("importe de cobro para el primer mes del cuatrimestre"), max_digits=14, default=0, decimal_places=2, null=True, blank=True)
+    importe_mes_2 = models.DecimalField(
+        _("importe de cobro para el segundo mes del cuatrimestre"), max_digits=14, default=0, decimal_places=2, null=True, blank=True)
+    importe_mes_3 = models.DecimalField(
+        _("importe de cobro para el tercer mes del cuatrimestre"), max_digits=14, default=0, decimal_places=2, null=True, blank=True)
+    importe_mes_4 = models.DecimalField(
+        _("importe de cobro para el cuarto mes del cuatrimestre"), max_digits=14, default=0, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        verbose_name = _("cobro auxiliar de hoja de ruta")
+        verbose_name_plural = _("cobros auxiliares de hojas de ruta")
+
+    def __str__(self):
+        return str(self.id) + ' Cobro auxiliar'
 
 
 class Objetivo(models.Model):
