@@ -2686,14 +2686,180 @@ def tableroCalcular(request):
         realizado_presente=Sum('importe_presente_realizado')
     )
     cobro["nombre"] = "(50)_COBRO (RECEP. DOCUMENTO)"
-    cobro["objetivos"] = None
 
-    cobro["prevision"] = cobro["presente_mes_1"] + cobro["presente_mes_2"] + cobro["presente_mes_3"] + cobro["presente_mes_4"] + cobro["presente_resto"] + cobro["proximo"]+ cobro["siguiente"]+ cobro["resto"]
-    
+    cobro["prevision"] = cobro['realizado_presente'] + cobro["presente_mes_1"] + cobro["presente_mes_2"] + cobro["presente_mes_3"] + cobro["presente_mes_4"] + cobro["presente_resto"] + cobro["proximo"]+ cobro["siguiente"]+ cobro["resto"]
     cobro["realizado"] = cobro["realizado_presente"]
+    cobro["fin"] = cobro["anterior"] + cobro["prevision"]
+    cobro['objetivos'] = produccion['fin'] - cobro['fin']
 
-    cobro["fin"] = cobro["anterior"] + cobro["realizado"] + cobro["prevision"]
 
+    # Pago
+    pago = query.all()
+    pago = pago.annotate(
+        importe_anterior=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('pago__importe_anterior'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('pago__importe_anterior'), 0.00)),
+            output_field=DecimalField()
+        ),
+        importe_presente=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('pago__importe_presente'), 0.00)+Coalesce(F('pago__importe_mes_1'), 0.00)+Coalesce(F('pago__importe_mes_2'), 0.00) +
+                        Coalesce(F('pago__importe_mes_3'), 0.00) +
+                        Coalesce(F('pago__importe_mes_4'), 0.00) +
+                        Coalesce(F('pago__importe_resto'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('pago__importe_presente'), 0.00)+Coalesce(F('pago__importe_mes_1'), 0.00)+Coalesce(F('pago__importe_mes_2'), 0.00) +
+                        Coalesce(F('pago__importe_mes_3'), 0.00) +
+                        Coalesce(F('pago__importe_mes_4'), 0.00) +
+                        Coalesce(F('pago__importe_resto'), 0.00)),
+            output_field=DecimalField()
+        ),
+        importe_proximo=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('pago__importe_proximo'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('pago__importe_proximo'), 0.00)),
+            output_field=DecimalField()
+        ),
+        importe_siguiente=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('pago__importe_siguiente'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('pago__importe_siguiente'), 0.00)),
+            output_field=DecimalField()
+        ),
+        importe_resto=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('pago__importe_pendiente'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('pago__importe_pendiente'), 0.00)),
+            output_field=DecimalField()
+        ),
+        importe_prevision=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('pago__importe_mes_1'), 0.00)+Coalesce(F('pago__importe_mes_2'), 0.00) +
+                         Coalesce(F('pago__importe_mes_3'), 0.00) +
+                         Coalesce(F('pago__importe_mes_4'), 0.00)+Coalesce(F('pago__importe_resto'), 0.00)+F('importe_proximo') +
+                         F('importe_siguiente')+F('importe_resto')),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('pago__importe_mes_1'), 0.00)+Coalesce(F('pago__importe_mes_2'), 0.00) +
+                         Coalesce(F('pago__importe_mes_3'), 0.00) +
+                         Coalesce(F('pago__importe_mes_4'), 0.00)+Coalesce(F('pago__importe_resto'), 0.00)+F('importe_proximo') +
+                         F('importe_siguiente')+F('importe_resto')),
+            output_field=DecimalField()
+        ),
+        importe_fin=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((F('importe_presente')+F('importe_proximo') + F('importe_siguiente')+F('importe_resto') + F('importe_anterior')),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(F('importe_presente')+F('importe_proximo') + F('importe_siguiente')+F('importe_resto') + F('importe_anterior')),
+            output_field=DecimalField()
+        ),
+        importe_objetivos=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((F('importe_fin')+Coalesce(Sum('objetivos__venta'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(F('importe_fin')+Coalesce(Sum('objetivos__venta'), 0.00)),
+            output_field=DecimalField()
+        ),
+        importe_presente_mes_1=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('pago__importe_mes_1'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('pago__importe_mes_1'), 0.00)),
+            output_field=DecimalField()
+        ),
+        importe_presente_mes_2=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('pago__importe_mes_2'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('pago__importe_mes_2'), 0.00)),
+            output_field=DecimalField()
+        ),
+        importe_presente_mes_3=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('pago__importe_mes_3'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('pago__importe_mes_3'), 0.00)),
+            output_field=DecimalField()
+        ),
+        importe_presente_mes_4=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('pago__importe_mes_4'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('pago__importe_mes_4'), 0.00)),
+            output_field=DecimalField()
+        ),
+        importe_presente_resto=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('pago__importe_resto'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('pago__importe_resto'), 0.00)),
+            output_field=DecimalField()
+        ),
+        importe_presente_realizado=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('pago__importe_presente'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('pago__importe_presente'), 0.00)),
+            output_field=DecimalField()
+        ),
+    ).aggregate(
+        anterior=Sum('importe_anterior'),
+        presente=Sum('importe_presente'),
+        presente_mes_1=Sum('importe_presente_mes_1'),
+        presente_mes_2=Sum('importe_presente_mes_2'),
+        presente_mes_3=Sum('importe_presente_mes_3'),
+        presente_mes_4=Sum('importe_presente_mes_4'),
+        presente_resto=Sum('importe_presente_resto'),
+        proximo=Sum('importe_proximo'),
+        siguiente=Sum('importe_siguiente'),
+        resto=Sum('importe_resto'),
+        prevision=Sum('importe_prevision'),
+        fin=Sum('importe_fin'),
+        objetivos=Sum('importe_objetivos'),
+        realizado_presente=Sum('importe_presente_realizado')
+    )
+    pago["nombre"] = "PAGOS"
+    pago["objetivos"] = None
+
+    pago["prevision"] = pago['realizado_presente'] + pago["presente_mes_1"] + pago["presente_mes_2"] + pago["presente_mes_3"] + pago["presente_mes_4"] + pago["presente_resto"] + pago["proximo"]+ pago["siguiente"]+ pago["resto"]
+    
+    pago["realizado"] = pago["realizado_presente"]
+
+    pago["fin"] = pago["anterior"] + pago["prevision"]
+    pago['realizado'] = pago["realizado_presente"]
+    pago['objetivos'] = directo['fin'] - pago['fin']
 
     # Producción - Certificación
     prod_cert = {}
@@ -2773,6 +2939,12 @@ def tableroCalcular(request):
         _delegacion = delegacion[key] if delegacion.get(key)  else 0
         _central = central[key] if central.get(key) else 0
         margenNeto[key] = _margenBruto - _delegacion - _central
+
+    capitalFinanciero = {'nombre': 'CAPITAL FINANCIERO', 'presente': 0, 'prevision': 0 }
+    for key in keyCalcular:
+        _cobro = cobro[key] if cobro.get(key) else 0
+        _pago = pago[key] if pago.get(key)  else 0
+        capitalFinanciero[key] = _cobro - _pago
     
     keyPresente =[
         'realizado',
@@ -2783,6 +2955,7 @@ def tableroCalcular(request):
     for key in keyPresente:
         margenBruto['presente'] += margenBruto[key]
         margenNeto['presente'] += margenNeto[key]
+        capitalFinanciero['presente'] += capitalFinanciero[key]
 
     keyPrevision = [
          'presente',
@@ -2792,6 +2965,10 @@ def tableroCalcular(request):
     for key in keyPrevision:
         margenBruto['prevision'] += margenBruto[key]
         margenNeto['prevision'] += margenNeto[key]
+        capitalFinanciero['prevision'] += capitalFinanciero[key]
+
+    capitalFinanciero['fin'] = capitalFinanciero['anterior'] + capitalFinanciero['prevision']
+    capitalFinanciero['objetivos'] = margenBruto['fin'] - capitalFinanciero['fin']
 
     retorno = []
     retorno.append(produccion)
@@ -2803,9 +2980,11 @@ def tableroCalcular(request):
     retorno.append(coste)
     retorno.append(resultado)
     retorno.append(certificacion)
-    retorno.append(cobro)
     retorno.append(prod_cert)
+    retorno.append(cobro)#--- cobro
     retorno.append(cert_cobro)
+    retorno.append(pago)
+    retorno.append(capitalFinanciero)
 
     serializado = DashboardSerializer(retorno, many=True)
     return serializado, {'directo': directo}
