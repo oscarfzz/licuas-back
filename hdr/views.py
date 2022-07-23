@@ -2,7 +2,7 @@ from django.forms import DecimalField, IntegerField
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from licuashdr.Permissions import BasePermissions, PerfilAdministrador, PerfilResponsable, PerfilJefeDeObra, TienePerfil, ResponsableOSubditosRespoObraHDR
-from hdr.models import HojaDeRuta, HojaDeRutaCertificacion, HojaDeRutaPago, HojaDeRutaPagoAuxiliar, HojaDeRutaCobroAuxiliar, HojaDeRutaProduccion, HojaDeRutaCobro, BI, Objetivo
+from hdr.models import HojaDeRuta, HojaDeRutaCertificacion, HojaDeRutaPago, HojaDeRutaProduccion, HojaDeRutaCobro, BI, Objetivo
 from hdr.serializers import HojaDeRutaSerializer, HojaDeRutaDetalleSerializer, ReadHojaDeRutaSerializer, HojaDeRutaProduccionSerializer, HojaDeRutaCertificacionSerializer, HojaDeRutaPagoSerializer, HojaDeRutaCobroSerializer, BISerializer, ReadBISerializer, ObjetivoSerializer, DashboardSerializer
 from hdr.util import calcularPrecioConFiltros
 from rest_framework.response import Response
@@ -116,13 +116,11 @@ class HojaDeRutaViewSet(viewsets.ModelViewSet):
             request.data.update({"year": hojaDeRuta.pago.hoja.year,"cuarto": hojaDeRuta.pago.hoja.cuarto,"cod_obra": [
                 hojaDeRuta.pago.hoja.obra.id
                 ]})
-            print(' ##2 actualizarPagoAuxiliar se modifico el periodo -- HojaDeRutaViewSet ')
             actualizarPagoAuxiliar(request, hojaDeRuta.pago)
         elif request.data.get('periodo_cobro', False):
             request.data.update({"year": hojaDeRuta.cobro.hoja.year,"cuarto": hojaDeRuta.cobro.hoja.cuarto,"cod_obra": [
                 hojaDeRuta.cobro.hoja.obra.id
                 ]})
-            print(' ##2 actualizarCobroAuxiliar se modifico el periodo -- HojaDeRutaViewSet ')
             actualizarCobroAuxiliar(request, hojaDeRuta.cobro)
         return Response(serializer.data)
 
@@ -140,7 +138,6 @@ class HojaDeRutaProduccionViewSet(viewsets.ModelViewSet): #yyy
         self.perform_update(serializer)
 
         if data.get('importe_coste_mes_1') or data.get('importe_coste_mes_2') or data.get('importe_coste_mes_3') or data.get('importe_coste_mes_4') or data.get('importe_coste_proximo') or data.get('importe_coste_siguiente'):
-            print(' #33 actualizarPagoAuxiliar se modifico el valor vinculado HojaDeRutaProduccionViewSet ')
             actualizarPagoAuxiliar(request, rutaProduccion.hoja.pago)
         return Response(serializer.data)
 
@@ -157,7 +154,6 @@ class HojaDeRutaCertificacionViewSet(viewsets.ModelViewSet): #xxx
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
 
-        print(' ##3 actualizarCobroAuxiliar se modifico el valor vinculado HojaDeRutaCertificacionViewSet')
         actualizarCobroAuxiliar(request, rutaCertificacion.hoja.cobro)
         return Response(serializer.data)
 
@@ -170,11 +166,69 @@ class HojaDeRutaCobroViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         cobro = serializer.save()
-        print(' ##1 actualizarCobroAuxiliar creando el HojaDeRutaCobroViewSet ')
         cobroSerializer = actualizarCobroAuxiliar(request, cobro)
         headers = self.get_success_headers(cobroSerializer.data)
         return Response(cobroSerializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
+
+    def update(self, request, *args, **kwargs):
+        instanceCobro = self.get_object()
+        
+        mes_1 = request.data.get('importe_mes_1', False)
+        mes_2 = request.data.get('importe_mes_2', False)
+        mes_3 = request.data.get('importe_mes_3', False)
+        mes_4 = request.data.get('importe_mes_4', False)
+        sinModificar = False
+        if type(mes_1) != bool:
+            if mes_1 == str(instanceCobro.importe_mes_1):
+                sinModificar = True
+        elif type(mes_2) != bool:
+            if mes_2 == str(instanceCobro.importe_mes_2):
+                sinModificar = True
+        elif type(mes_3) != bool:
+            if mes_3 == str(instanceCobro.importe_mes_3):
+                sinModificar = True
+        elif type(mes_4) != bool:
+            if mes_4 == str(instanceCobro.importe_mes_4):
+                sinModificar = True
+        
+        partial = kwargs.pop('partial', False)
+        serializer = self.get_serializer(instanceCobro, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        
+
+        if sinModificar:
+            return Response(serializer.data)
+        instanceCobro.cobro_actualizar = False
+        instanceCobro.save()
+        
+        keySumar = [
+            'importe_anterior',
+            'importe_presente',
+            'importe_mes_1',
+            'importe_mes_2',
+            'importe_mes_3',
+            'importe_mes_4',
+            'importe_resto',
+            'importe_proximo',
+            'importe_siguiente',
+            'importe_pendiente',
+        ]
+
+        directoFinObra = 0
+        for key in keySumar:
+            directoFinObra = directoFinObra + instanceCobro.hoja.certificacion.__dict__[key]
+
+        cantidad, actual_suma_cobro = actualizarInstanciaAuxiliar(request, instanceCobro)
+        valorModificar = 0
+        if cantidad != 0:
+            valorModificar = (directoFinObra - actual_suma_cobro) / cantidad
+        actualizarInstanciaAuxiliar(request, instanceCobro, valorModificar, True)
+
+        
+        serializerPago = self.get_serializer(instanceCobro)
+        return Response(serializerPago.data)
 
 class HojaDeRutaPagoViewSet(viewsets.ModelViewSet):
     queryset = HojaDeRutaPago.objects.all()
@@ -185,7 +239,6 @@ class HojaDeRutaPagoViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         pago = serializer.save()
-        print(' ##1 actualizarPagoAuxiliar creando el HojaDeRutaPagoViewSet ')
         pagoSerializer = actualizarPagoAuxiliar(request, pago)
         headers = self.get_success_headers(pagoSerializer.data)
         return Response(pagoSerializer.data, status=status.HTTP_201_CREATED, headers=headers)
@@ -227,151 +280,85 @@ class HojaDeRutaPagoViewSet(viewsets.ModelViewSet):
         datoDirecto = _tableroCalcular['directo']
         directoFinObra = datoDirecto.get('fin',0)
 
-
-        cantidad, actual_suma, actual_suma_pago = self.actualizarInstanciaAuxiliar(request, instancePago )
+        # ---------- new code -----------------
+        cantidad, actual_suma_pago = actualizarInstanciaAuxiliar(request, instancePago)
         valorModificar = 0
-        borrarAuxiliar = False
+        if cantidad != 0:
+            valorModificar = (directoFinObra - actual_suma_pago) / cantidad
+        actualizarInstanciaAuxiliar(request, instancePago, valorModificar, True)
 
-        if actual_suma_pago > directoFinObra:
-            borrarAuxiliar = True
-        elif cantidad != 0:
-            valorModificar = (directoFinObra - actual_suma) / cantidad
-
-        self.actualizarInstanciaAuxiliar(request, instancePago, valorModificar, True, borrarAuxiliar)
+        # ---------- fin new code -----------------
         serializerPago = self.get_serializer(instancePago)
         return Response(serializerPago.data)
 
-    def actualizarInstanciaAuxiliar(self, request, instancePago, valorModificar=0, actualizar = False, borrarAuxiliar = False):
-        if borrarAuxiliar:
-            instancePago.pago_auxiliar.all().delete()
-            return 0, 0
+def actualizarInstanciaAuxiliar(request, instancePago, valorModificar=0, actualizar = False):
+    cantidad = 0
+    actual_suma_pago = 0
+    mes_1 = request.data.get('importe_mes_1', False)
+    mes_2 = request.data.get('importe_mes_2', False)
+    mes_3 = request.data.get('importe_mes_3', False)
 
-        cantidad = 0
-        actual_suma_pago = 0
-        actual_suma = 0
-        mes_1 = request.data.get('importe_mes_1', False)
-        mes_2 = request.data.get('importe_mes_2', False)
-        mes_3 = request.data.get('importe_mes_3', False)
-        mes_4 = request.data.get('importe_mes_4', False)
+    if type(mes_1) != bool:
+        if instancePago.importe_mes_2 != 0:
+            if actualizar:
+                instancePago.importe_mes_2 += valorModificar
+                instancePago.save()
+            cantidad = cantidad + 1
+        if instancePago.importe_mes_3 != 0:
+            if actualizar:
+                instancePago.importe_mes_3 += valorModificar
+                instancePago.save()
+            cantidad = cantidad + 1
+        if instancePago.importe_mes_4 != 0:
+            if actualizar:
+                instancePago.importe_mes_4 += valorModificar
+                instancePago.save()
+            cantidad = cantidad + 1
+    elif type(mes_2) != bool:
+        if instancePago.importe_mes_3 != 0:
+            if actualizar:
+                instancePago.importe_mes_3 += valorModificar
+                instancePago.save()
+            cantidad = cantidad + 1
+        if instancePago.importe_mes_4 != 0:
+            if actualizar:
+                instancePago.importe_mes_4 += valorModificar
+                instancePago.save()
+            cantidad = cantidad + 1
+    elif type(mes_3) != bool:
+        if instancePago.importe_mes_4 != 0:
+            if actualizar:
+                instancePago.importe_mes_4 += valorModificar
+                instancePago.save()
+            cantidad = cantidad + 1
 
-
-        if type(mes_1) != bool:
-            if instancePago.importe_mes_2 != 0:
-                if actualizar:
-                    instancePago.importe_mes_2 += valorModificar
-                    instancePago.save()
-                cantidad = cantidad + 1
-            if instancePago.importe_mes_3 != 0:
-                if actualizar:
-                    instancePago.importe_mes_3 += valorModificar
-                    instancePago.save()
-                cantidad = cantidad + 1
-            if instancePago.importe_mes_4 != 0:
-                if actualizar:
-                    instancePago.importe_mes_4 += valorModificar
-                    instancePago.save()
-                cantidad = cantidad + 1
-        elif type(mes_2) != bool:
-            if instancePago.importe_mes_3 != 0:
-                if actualizar:
-                    instancePago.importe_mes_3 += valorModificar
-                    instancePago.save()
-                cantidad = cantidad + 1
-            if instancePago.importe_mes_4 != 0:
-                if actualizar:
-                    instancePago.importe_mes_4 += valorModificar
-                    instancePago.save()
-                cantidad = cantidad + 1
-        elif type(mes_3) != bool:
-            if instancePago.importe_mes_4 != 0:
-                if actualizar:
-                    instancePago.importe_mes_4 += valorModificar
-                    instancePago.save()
-                cantidad = cantidad + 1
-
-        actual_suma_pago = actual_suma_pago + instancePago.importe_anterior + instancePago.importe_presente +  instancePago.importe_mes_1 + instancePago.importe_mes_2 + instancePago.importe_mes_3 + instancePago.importe_mes_4 + instancePago.importe_proximo + instancePago.importe_siguiente + instancePago.importe_pendiente
-        instanceAuxiliares = instancePago.pago_auxiliar.all()
-        if not actualizar:
-            instanceAuxiliares = instanceAuxiliares.exclude(year=instancePago.hoja.year, cuarto=instancePago.hoja.cuarto)
-
-        for auxiliar in instanceAuxiliares:
-            if auxiliar.importe_mes_1 != 0:
-                if actualizar:
-                    if valorModificar < 0 and abs(valorModificar) > auxiliar.importe_mes_1:
-                        auxiliar.importe_mes_1 = 0
-                    else:
-                        auxiliar.importe_mes_1 += valorModificar
-                    auxiliar.save()
-                cantidad = cantidad + 1
-                actual_suma = actual_suma + auxiliar.importe_mes_1
-            if auxiliar.importe_mes_2 != 0:
-                if actualizar:
-                    if valorModificar < 0 and abs(valorModificar) > auxiliar.importe_mes_2:
-                        auxiliar.importe_mes_2 = 0
-                    else:
-                        auxiliar.importe_mes_2 += valorModificar
-                    auxiliar.save()
-                cantidad = cantidad + 1
-                actual_suma = actual_suma + auxiliar.importe_mes_2
-            if auxiliar.importe_mes_3 != 0:
-                if actualizar:
-                    if valorModificar < 0 and abs(valorModificar) > auxiliar.importe_mes_3:
-                        auxiliar.importe_mes_3 = 0
-                    else:
-                        auxiliar.importe_mes_3 += valorModificar
-                    auxiliar.save()
-                cantidad = cantidad + 1
-                actual_suma = actual_suma + auxiliar.importe_mes_3
-            if auxiliar.importe_mes_4 != 0:
-                if actualizar:
-                    if valorModificar < 0 and abs(valorModificar) > auxiliar.importe_mes_4:
-                        auxiliar.importe_mes_4 = 0
-                    else:
-                        auxiliar.importe_mes_4 += valorModificar
-                    auxiliar.save()
-                cantidad = cantidad + 1
-                actual_suma = actual_suma + auxiliar.importe_mes_4
-        actual_suma = actual_suma + actual_suma_pago
-        return cantidad, actual_suma, actual_suma_pago
+    actual_suma_pago = instancePago.importe_anterior + instancePago.importe_presente +  instancePago.importe_mes_1 + instancePago.importe_mes_2 + instancePago.importe_mes_3 + instancePago.importe_mes_4 + instancePago.importe_proximo + instancePago.importe_siguiente + instancePago.importe_pendiente
+    return cantidad, actual_suma_pago
 
 def actualizarCobroAuxiliar(request, cobro):
-    HojaDeRutaCobroAuxiliar.objects.filter(cobro=cobro).delete()
     certificacion = cobro.hoja.certificacion
 
     cobro.importe_anterior = certificacion.importe_anterior if type(certificacion.importe_anterior) != type(None) else 0
     cobro.importe_presente = certificacion.importe_presente if type(certificacion.importe_presente) != type(None) else 0
-    importe_mes_1 = certificacion.importe_mes_1 if type(certificacion.importe_mes_1) != type(None) else 0 
-    importe_mes_2 = certificacion.importe_mes_2 if type(certificacion.importe_mes_2) != type(None) else 0 
-    importe_mes_3 = certificacion.importe_mes_3 if type(certificacion.importe_mes_3) != type(None) else 0 
-    importe_mes_4 = certificacion.importe_mes_4 if type(certificacion.importe_mes_4) != type(None) else 0 
-    cobro.importe_resto = certificacion.importe_resto if type(certificacion.importe_resto) != type(None) else 0 
-    cobro.importe_proximo = certificacion.importe_proximo if type(certificacion.importe_proximo) != type(None) else 0 
-    cobro.importe_siguiente = certificacion.importe_siguiente if type(certificacion.importe_siguiente) != type(None) else 0 
-    cobro.importe_pendiente = certificacion.importe_pendiente if type(certificacion.importe_pendiente) != type(None) else 0 
+    importe_mes_1 = certificacion.importe_mes_1 if type(certificacion.importe_mes_1) != type(None) else 0
+    importe_mes_2 = certificacion.importe_mes_2 if type(certificacion.importe_mes_2) != type(None) else 0
+    importe_mes_3 = certificacion.importe_mes_3 if type(certificacion.importe_mes_3) != type(None) else 0
+    importe_mes_4 = certificacion.importe_mes_4 if type(certificacion.importe_mes_4) != type(None) else 0
+    cobro.importe_mes_1 = 0
+    cobro.importe_mes_2 = 0
+    cobro.importe_mes_3 = 0
+    cobro.importe_mes_4 = 0
+    cobro.importe_resto = certificacion.importe_resto if type(certificacion.importe_resto) != type(None) else 0
+    cobro.importe_proximo = certificacion.importe_proximo if type(certificacion.importe_proximo) != type(None) else 0
+    cobro.importe_siguiente = certificacion.importe_siguiente if type(certificacion.importe_siguiente) != type(None) else 0
+    cobro.importe_pendiente = certificacion.importe_pendiente if type(certificacion.importe_pendiente) != type(None) else 0
     cobro.save()
-
-    print('importe_mes_1: ' ,importe_mes_1)
-    print('importe_mes_2: ' ,importe_mes_2)
-    print('importe_mes_3: ' ,importe_mes_3)
-    print('importe_mes_4: ' ,importe_mes_4)
-
+    
     analizarPeriodo(cobro, importe_mes_1, importe_mes_2, importe_mes_3, importe_mes_4, 'cobro')
-    sumatoriaMes = HojaDeRutaCobroAuxiliar.objects.filter(obra=cobro.hoja.obra, cuarto=cobro.hoja.cuarto, year=cobro.hoja.year).aggregate(
-        importe_mes_1=Sum('importe_mes_1'),
-        importe_mes_2=Sum('importe_mes_2'),
-        importe_mes_3=Sum('importe_mes_3'),
-        importe_mes_4=Sum('importe_mes_4'))
-    cobro.importe_mes_1 = sumatoriaMes.get('importe_mes_1',0)
-    cobro.importe_mes_2 = sumatoriaMes.get('importe_mes_2',0)
-    cobro.importe_mes_3 = sumatoriaMes.get('importe_mes_3',0)
-    cobro.importe_mes_4 = sumatoriaMes.get('importe_mes_4',0)
-    cobro.save()
-
     cobroSerializer= HojaDeRutaCobroSerializer(cobro)
     return cobroSerializer
 
 def actualizarPagoAuxiliar(request, pago):
-    HojaDeRutaPagoAuxiliar.objects.filter(pago=pago).delete()
     request.data.update({"year": pago.hoja.year,"cuarto": pago.hoja.cuarto,"cod_obra": [
         pago.hoja.obra.id
         ]})
@@ -382,26 +369,19 @@ def actualizarPagoAuxiliar(request, pago):
     importe_mes_2 = datoDirecto.get('presente_mes_1',0)
     importe_mes_3 = datoDirecto.get('presente_mes_2',0)
     importe_mes_4 = datoDirecto.get('presente_mes_3',0)
+    pago.importe_mes_1 = 0
+    pago.importe_mes_2 = 0
+    pago.importe_mes_3 = 0
+    pago.importe_mes_4 = 0
     pago.importe_proximo = datoDirecto.get('presente_mes_4',0)
     pago.importe_siguiente = datoDirecto.get('proximo',0)
     pago.importe_pendiente = datoDirecto.get('siguiente',0)
     pago.save()
 
     analizarPeriodo(pago, importe_mes_1, importe_mes_2, importe_mes_3, importe_mes_4, 'pago')
-
-    sumatoriaMes = HojaDeRutaPagoAuxiliar.objects.filter(obra=pago.hoja.obra, cuarto=pago.hoja.cuarto, year=pago.hoja.year).aggregate(
-        importe_mes_1=Sum('importe_mes_1'),
-        importe_mes_2=Sum('importe_mes_2'),
-        importe_mes_3=Sum('importe_mes_3'),
-        importe_mes_4=Sum('importe_mes_4'))
-    pago.importe_mes_1 = sumatoriaMes.get('importe_mes_1',0)
-    pago.importe_mes_2 = sumatoriaMes.get('importe_mes_2',0)
-    pago.importe_mes_3 = sumatoriaMes.get('importe_mes_3',0)
-    pago.importe_mes_4 = sumatoriaMes.get('importe_mes_4',0)
-    pago.save()
-
     pagoSerializer= HojaDeRutaPagoSerializer(pago)
     return pagoSerializer
+
 
 def analizarPeriodo(instancia, importe_mes_1,importe_mes_2,importe_mes_3,importe_mes_4, tipo):
     if tipo not in ['pago', 'cobro']:
@@ -409,86 +389,102 @@ def analizarPeriodo(instancia, importe_mes_1,importe_mes_2,importe_mes_3,importe
         return
     year = instancia.hoja.year
     cuarto = instancia.hoja.cuarto
-
     periodo = 0
     if tipo == 'pago':
         periodo = instancia.hoja.periodo_pago
-    if tipo == 'cobro':
+    elif tipo == 'cobro':
         periodo = instancia.hoja.periodo_cobro
 
-
-    if periodo == 30 or periodo == 150:
-        if periodo == 150:
-            year, cuarto = siguienteCuarto(year, cuarto)
+    if periodo == 30:
         meses = {
             'mes_1': importe_mes_1,
             'mes_2': importe_mes_2,
             'mes_3': importe_mes_3,
             'mes_4': importe_mes_4,
         }
-        crearAuxiliar(instancia, year, cuarto, meses, tipo)
-    elif periodo == 60 or periodo == 180:
-        if periodo == 180:
-            year, cuarto = siguienteCuarto(year, cuarto)
+        actualizarInstancia(instancia, meses)
+    elif periodo == 60:
         meses = {
             'mes_2': importe_mes_1,
             'mes_3': importe_mes_2,
             'mes_4': importe_mes_3,
         }
-        crearAuxiliar(instancia, year, cuarto, meses, tipo)
-        year, cuarto = siguienteCuarto(year, cuarto)
+        actualizarInstancia(instancia, meses)
         meses = {
             'mes_1': importe_mes_4,
         }
-        crearAuxiliar(instancia, year, cuarto, meses, tipo)
-    elif periodo == 90 or periodo == 210:
-        if periodo == 210:
-            year, cuarto = siguienteCuarto(year, cuarto)
+        verificarSumaSiguienteYear(instancia, meses, year, cuarto)
+    elif periodo == 90:
         meses = {
             'mes_3': importe_mes_1,
             'mes_4': importe_mes_2,
         }
-        crearAuxiliar(instancia, year, cuarto, meses, tipo)
-        year, cuarto = siguienteCuarto(year, cuarto)
+        actualizarInstancia(instancia, meses)
         meses = {
             'mes_1': importe_mes_3,
             'mes_2': importe_mes_4,
         }
-        crearAuxiliar(instancia, year, cuarto, meses, tipo)
+        verificarSumaSiguienteYear(instancia, meses, year, cuarto)
     elif periodo == 120:
         meses = {
             'mes_4': importe_mes_1,
         }
-        crearAuxiliar(instancia, year, cuarto, meses, tipo)
-        year, cuarto = siguienteCuarto(year, cuarto)
+        actualizarInstancia(instancia, meses)
         meses = {
             'mes_1': importe_mes_2,
             'mes_2': importe_mes_3,
             'mes_3': importe_mes_4,
         }
-        crearAuxiliar(instancia, year, cuarto, meses, tipo)
+        verificarSumaSiguienteYear(instancia, meses, year, cuarto)
+    elif periodo == 150:
+        meses = {
+            'mes_1': importe_mes_1,
+            'mes_2': importe_mes_2,
+            'mes_3': importe_mes_3,
+            'mes_4': importe_mes_4,
+        }
+        verificarSumaSiguienteYear(instancia, meses, year, cuarto, False)
+    elif periodo == 180:
+        meses = {
+            'mes_2': importe_mes_1,
+            'mes_3': importe_mes_2,
+            'mes_4': importe_mes_3,
+        }
+        verificarSumaSiguienteYear(instancia, meses, year, cuarto, False)
+        meses = {
+            'mes_1': importe_mes_4,
+        }
+        verificarSumaSiguienteYear(instancia, meses, year, cuarto, False)
+    elif periodo == 210:
+        meses = {
+            'mes_3': importe_mes_1,
+            'mes_4': importe_mes_2,
+        }
+        verificarSumaSiguienteYear(instancia, meses, year, cuarto, False)
+        meses = {
+            'mes_1': importe_mes_3,
+            'mes_2': importe_mes_4,
+        }
+        verificarSumaSiguienteYear(instancia, meses, year, cuarto, False)
+    
+def verificarSumaSiguienteYear(instancia, meses, year, cuarto, guardarActual=True):
+    actual_year = year
+    year, cuarto = siguienteCuarto(year, cuarto)
+    if (actual_year < year):
+        suma_meses = 0
+        for mes in meses:
+            suma_meses += meses[mes]
+        if suma_meses > 0:
+            instancia.importe_proximo = instancia.importe_proximo + suma_meses
+            instancia.save()
+    else:
+        if guardarActual:
+            actualizarInstancia(instancia, meses)
 
-def crearAuxiliar(instancia, year, cuarto, meses, tipo):
-    if tipo not in ['pago', 'cobro']:
-        print('-- Tipo no valido --')
-        return
-    mes_1 = meses.get('mes_1',0)
-    mes_2 = meses.get('mes_2',0)
-    mes_3 = meses.get('mes_3',0)
-    mes_4 = meses.get('mes_4',0)
-
-    total = mes_1 + mes_2 + mes_3 + mes_4
-    if total != 0:
-        if tipo == 'pago':
-            instanciaAuxiliar = HojaDeRutaPagoAuxiliar.objects.create(pago=instancia, year=year, cuarto=cuarto, obra=instancia.hoja.obra)
-        if tipo == 'cobro':
-            instanciaAuxiliar = HojaDeRutaCobroAuxiliar.objects.create(cobro=instancia, year=year, cuarto=cuarto, obra=instancia.hoja.obra)
-
-        instanciaAuxiliar.importe_mes_1 = mes_1
-        instanciaAuxiliar.importe_mes_2 = mes_2
-        instanciaAuxiliar.importe_mes_3 = mes_3
-        instanciaAuxiliar.importe_mes_4 = mes_4
-        instanciaAuxiliar.save()
+def actualizarInstancia(instancia, meses):
+    for mes in meses:
+        instancia.__setattr__('importe_' + mes, meses[mes])
+    instancia.save()
 
 def siguienteCuarto(year, cuarto):
         if cuarto == 1:
