@@ -191,18 +191,18 @@ class HojaDeRutaCobroViewSet(viewsets.ModelViewSet):
         elif type(mes_4) != bool:
             if mes_4 == str(instanceCobro.importe_mes_4):
                 sinModificar = True
-        
+
         partial = kwargs.pop('partial', False)
         serializer = self.get_serializer(instanceCobro, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        
+
 
         if sinModificar:
             return Response(serializer.data)
         instanceCobro.cobro_actualizar = False
         instanceCobro.save()
-        
+
         keySumar = [
             'importe_anterior',
             'importe_presente',
@@ -218,7 +218,9 @@ class HojaDeRutaCobroViewSet(viewsets.ModelViewSet):
 
         directoFinObra = 0
         for key in keySumar:
-            directoFinObra = directoFinObra + instanceCobro.hoja.certificacion.__dict__[key]
+            valor = instanceCobro.hoja.certificacion.__getattribute__(key)
+            valor = valor if valor else 0
+            directoFinObra = directoFinObra + valor
 
         cantidad, actual_suma_cobro = actualizarInstanciaAuxiliar(request, instanceCobro)
         valorModificar = 0
@@ -226,7 +228,7 @@ class HojaDeRutaCobroViewSet(viewsets.ModelViewSet):
             valorModificar = (directoFinObra - actual_suma_cobro) / cantidad
         actualizarInstanciaAuxiliar(request, instanceCobro, valorModificar, True)
 
-        
+
         serializerPago = self.get_serializer(instanceCobro)
         return Response(serializerPago.data)
 
@@ -280,14 +282,12 @@ class HojaDeRutaPagoViewSet(viewsets.ModelViewSet):
         datoDirecto = _tableroCalcular['directo']
         directoFinObra = datoDirecto.get('fin',0)
 
-        # ---------- new code -----------------
         cantidad, actual_suma_pago = actualizarInstanciaAuxiliar(request, instancePago)
         valorModificar = 0
         if cantidad != 0:
             valorModificar = (directoFinObra - actual_suma_pago) / cantidad
         actualizarInstanciaAuxiliar(request, instancePago, valorModificar, True)
 
-        # ---------- fin new code -----------------
         serializerPago = self.get_serializer(instancePago)
         return Response(serializerPago.data)
 
@@ -353,7 +353,7 @@ def actualizarCobroAuxiliar(request, cobro):
     cobro.importe_siguiente = certificacion.importe_siguiente if type(certificacion.importe_siguiente) != type(None) else 0
     cobro.importe_pendiente = certificacion.importe_pendiente if type(certificacion.importe_pendiente) != type(None) else 0
     cobro.save()
-    
+
     analizarPeriodo(cobro, importe_mes_1, importe_mes_2, importe_mes_3, importe_mes_4, 'cobro')
     cobroSerializer= HojaDeRutaCobroSerializer(cobro)
     return cobroSerializer
