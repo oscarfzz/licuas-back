@@ -1,6 +1,7 @@
 from django.forms import DecimalField, IntegerField
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from general.models import Obra
 from licuashdr.Permissions import BasePermissions, PerfilAdministrador, PerfilResponsable, PerfilJefeDeObra, TienePerfil, ResponsableOSubditosRespoObraHDR
 from hdr.models import HojaDeRuta, HojaDeRutaCertificacion, HojaDeRutaPago, HojaDeRutaProduccion, HojaDeRutaCobro, BI, Objetivo
 from hdr.serializers import HojaDeRutaSerializer, HojaDeRutaDetalleSerializer, ReadHojaDeRutaSerializer, HojaDeRutaProduccionSerializer, HojaDeRutaCertificacionSerializer, HojaDeRutaPagoSerializer, HojaDeRutaCobroSerializer, BISerializer, ReadBISerializer, ObjetivoSerializer, DashboardSerializer
@@ -59,6 +60,7 @@ class HojaDeRutaExcelAdminViewSet(viewsets.ModelViewSet):
                                                             'obra__divisa').prefetch_related("objetivos").distinct()
         serializer = ReadHojaDeRutaSerializer(
             queryset, context={'request': request}, many=True)
+
         return Response(serializer.data)
 
 
@@ -666,6 +668,36 @@ def dashboard(request):
 def tablero(request):
     serializado, _ = tableroCalcular(request)
     return Response(serializado.data)
+
+@api_view(["POST", ])
+@permission_classes([TienePerfil])
+def tableroObras(request):
+    year = request.data.get("year", None)
+    if not year:
+        raise CustomError(_("No se ha recibido el año a consultar"), _(
+            "Tablero de Mandos"), status_code=status.HTTP_400_BAD_REQUEST)
+    cuarto = request.data.get("cuarto", None)
+    if not cuarto:
+        raise CustomError(_("No se ha el año recibido el cuatrimestre a consultar"), _(
+            "Tablero de Mandos"), status_code=status.HTTP_400_BAD_REQUEST)
+
+    cod_obra = request.data.get("cod_obra", None)
+    
+    datos = []
+    if cod_obra is None:
+        query= Obra.objects.filter(hojaderuta__year=year, hojaderuta__cuarto=cuarto).distinct()
+        for obra in query:
+            request.data.update({"cod_obra": [obra.id]})
+            serializado, _ = tableroCalcular(request)
+            datos.append(serializado.data)
+    else:
+        for obra in cod_obra:
+            request.data.update({"cod_obra": [obra]})
+            serializado, _ = tableroCalcular(request)
+            datos.append(serializado.data)
+
+    return Response(datos)
+
 
 def tableroCalcular(request):
     """

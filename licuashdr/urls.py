@@ -17,7 +17,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.urls import include, path
 from general.views import importar_csv
-from hdr.views import hdr_en_cuatrimestre, abrir_hdrs, hdr_por_obra_year_cuarto, dashboard, tablero
+from hdr.views import hdr_en_cuatrimestre, abrir_hdrs, hdr_por_obra_year_cuarto, dashboard, tablero, tableroObras
 
 
 urlpatterns = [
@@ -36,5 +36,6 @@ urlpatterns = [
     path('api/v1/hdr_cuatrimestre/', hdr_en_cuatrimestre, name='hdr-cuarto'),
     path('api/v1/hdr_abrir/', abrir_hdrs, name='hdr-abrir'),
     path('api/v1/dashboard/', dashboard, name='dashboard'),
-    path('api/v1/tablero/', tablero, name='tablero')
+    path('api/v1/tablero/', tablero, name='tablero'),
+    path('api/v1/tablero_obras/', tableroObras, name='tableroObras')
 ]
