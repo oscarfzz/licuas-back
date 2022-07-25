@@ -689,13 +689,25 @@ def tableroObras(request):
         for obra in query:
             request.data.update({"cod_obra": [obra.id]})
             serializado, _ = tableroCalcular(request)
-            datos.append(serializado.data)
+            for data in serializado.data:
+                datos.append({**data, 
+                    'obra': obra.descripcion,
+                    'empresa': obra.empresa.nombre,
+                    'subdelegacion': obra.subdelegacion.descripcion,
+                    'delegacion': obra.delegacion.descripcion,
+                    })
     else:
-        for obra in cod_obra:
-            request.data.update({"cod_obra": [obra]})
+        for obra_id in cod_obra:
+            request.data.update({"cod_obra": [obra_id]})
             serializado, _ = tableroCalcular(request)
-            datos.append(serializado.data)
-
+            obra = Obra.objects.get(id=obra_id)
+            for data in serializado.data:
+                datos.append({**data, 
+                    'obra': obra.descripcion,
+                    'empresa': obra.empresa.nombre,
+                    'subdelegacion': obra.subdelegacion.descripcion,
+                    'delegacion': obra.delegacion.descripcion,
+                    })
     return Response(datos)
 
 
@@ -727,7 +739,7 @@ def tableroCalcular(request):
     divisa = request.data.get("divisa", None)
     # Creamos la query base a partir de los parámetros recibidos
     query = HojaDeRuta.objects.filter(year=year, cuarto=cuarto).select_related(
-        'produccion', 'certificacion', 'cobro', 'obra').prefetch_related('objetivos', 'obra__responsables')
+        'produccion', 'certificacion', 'cobro', 'obra', 'pago').prefetch_related('objetivos', 'obra__responsables')
 
     # Filtramos la query en función del tipo de usuario que tenemos
     usuario = request.user
