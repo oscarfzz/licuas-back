@@ -147,7 +147,7 @@ class HojaDeRutaCertificacionViewSet(viewsets.ModelViewSet): #xxx
     queryset = HojaDeRutaCertificacion.objects.all()
     serializer_class = HojaDeRutaCertificacionSerializer
     permission_classes = (BasePermissions, )
-    
+
     def update(self, request, *args, **kwargs):
         data = request.data
         partial = kwargs.pop('partial', False)
@@ -175,7 +175,7 @@ class HojaDeRutaCobroViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         instanceCobro = self.get_object()
-        
+
         mes_1 = request.data.get('importe_mes_1', False)
         mes_2 = request.data.get('importe_mes_2', False)
         mes_3 = request.data.get('importe_mes_3', False)
@@ -249,7 +249,7 @@ class HojaDeRutaPagoViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         instancePago = self.get_object()
-        
+
         mes_1 = request.data.get('importe_mes_1', False)
         mes_2 = request.data.get('importe_mes_2', False)
         mes_3 = request.data.get('importe_mes_3', False)
@@ -468,7 +468,7 @@ def analizarPeriodo(instancia, importe_mes_1,importe_mes_2,importe_mes_3,importe
             'mes_2': importe_mes_4,
         }
         verificarSumaSiguienteYear(instancia, meses, year, cuarto, False)
-    
+
 def verificarSumaSiguienteYear(instancia, meses, year, cuarto, guardarActual=True):
     actual_year = year
     year, cuarto = siguienteCuarto(year, cuarto)
@@ -774,8 +774,8 @@ def tableroCalcular(request):
     from general.models import CambioDivisa
     from divisas.models import Divisa
 
-    
-    
+
+
     cambios_divisas_parcial = CambioDivisa.objects.filter(cuarto=cuarto,year=year)
     cambios_divisas_sbqry = cambios_divisas_parcial.filter(divisa_id=OuterRef('id')).values('importe')
     lista_id = cambios_divisas_parcial.values_list("divisa_id")
@@ -784,7 +784,7 @@ def tableroCalcular(request):
             default= Value(1, DecimalField()) ,
             output_field=DecimalField()
         ))
-  
+
 
     subquery = cambios_divisas.filter(id=OuterRef('obra__divisa_id')).values('importe')
 
@@ -875,10 +875,10 @@ def tableroCalcular(request):
                     calcularPrecioConFiltros((Coalesce(F('produccion__importe_contrato_mes_1'), 0.00)+
                         Coalesce(F('produccion__importe_contrato_mes_2'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_3'), 0.00)+
                         Coalesce(F('produccion__importe_contrato_mes_4'), 0.00)+Coalesce(F('produccion__importe_contrato_resto'), 0.00)+
-                        
+
                         Coalesce(F('produccion__importe_contrato_proximo'), 0.00)+Coalesce(F('produccion__importe_contrato_siguiente'), 0.00) +
                         Coalesce(F('produccion__importe_contrato_pendiente'), 0.00)
-                        
+
                         +Coalesce(F('produccion__importe_ampliaciones_mes_1'), 0.00)+
                         Coalesce(F('produccion__importe_ampliaciones_mes_2'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_mes_3'), 0.00)+
                         Coalesce(F('produccion__importe_ampliaciones_mes_4'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_resto'), 0.00)+
@@ -891,10 +891,10 @@ def tableroCalcular(request):
             default=(Coalesce(F('produccion__importe_contrato_mes_1'), 0.00)+
                         Coalesce(F('produccion__importe_contrato_mes_2'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_3'), 0.00)+
                         Coalesce(F('produccion__importe_contrato_mes_4'), 0.00)+Coalesce(F('produccion__importe_contrato_resto'), 0.00)+
-                        
+
                         Coalesce(F('produccion__importe_contrato_proximo'), 0.00)+Coalesce(F('produccion__importe_contrato_siguiente'), 0.00) +
                         Coalesce(F('produccion__importe_contrato_pendiente'), 0.00)
-                        
+
                         +Coalesce(F('produccion__importe_ampliaciones_mes_1'), 0.00)+
                         Coalesce(F('produccion__importe_ampliaciones_mes_2'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_mes_3'), 0.00)+
                         Coalesce(F('produccion__importe_ampliaciones_mes_4'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_resto'), 0.00)+
@@ -1424,7 +1424,7 @@ def tableroCalcular(request):
     delegacion["objetivos"] = None
 
     delegacion["prevision"] = delegacion["presente_mes_1"] + delegacion["presente_mes_2"] + delegacion["presente_mes_3"] + delegacion["presente_mes_4"] + delegacion["presente_resto"] + delegacion["proximo"]+ delegacion["siguiente"]+ delegacion["resto"]
-    
+
     delegacion["fin"] = delegacion["anterior"] + delegacion["realizado"] + delegacion["prevision"]
 
 
@@ -1597,7 +1597,7 @@ def tableroCalcular(request):
                         Coalesce(F('gasto_central'), 0.00)/100),
             output_field=DecimalField()
         )
-        
+
         # importe_anterior=Coalesce(F('importe_coste_central_anterior'), 0.00),
         # importe_presente=
         # (((Coalesce(F('importe_contrato_consolidado'), 0.00) + Coalesce(F('importe_ampliacion_consolidado'), 0.00) ) * Coalesce(F('gasto_central'), 0.00)) / 100) +
@@ -1641,7 +1641,7 @@ def tableroCalcular(request):
     central["objetivos"] = None
 
     central["prevision"] = central["presente_mes_1"] + central["presente_mes_2"] + central["presente_mes_3"] + central["presente_mes_4"] + central["presente_resto"] + central["proximo"]+ central["siguiente"]+ central["resto"]
-    
+
     central["fin"] = central["anterior"] + central["realizado"] + central["prevision"]
 
 
@@ -1758,7 +1758,7 @@ def tableroCalcular(request):
                     calcularPrecioConFiltros((Coalesce(F('produccion__importe_coste_mes_1'), 0.00) + Coalesce(F('produccion__importe_coste_mes_2'), 0.00) +
                        Coalesce(F('produccion__importe_coste_mes_3'), 0.00) + Coalesce(F('produccion__importe_coste_mes_4'), 0.00) +
                        Coalesce(F('produccion__importe_coste_resto'), 0.00) +
-                       
+
                        Coalesce(F('produccion__importe_coste_proximo'), 0.00) +
                        Coalesce(F('produccion__importe_coste_siguiente'), 0.00) +
                        Coalesce(F('produccion__importe_coste_pendiente'), 0.00)),
@@ -1768,7 +1768,7 @@ def tableroCalcular(request):
             default=(Coalesce(F('produccion__importe_coste_mes_1'), 0.00) + Coalesce(F('produccion__importe_coste_mes_2'), 0.00) +
                        Coalesce(F('produccion__importe_coste_mes_3'), 0.00) + Coalesce(F('produccion__importe_coste_mes_4'), 0.00) +
                        Coalesce(F('produccion__importe_coste_resto'), 0.00) +
-                       
+
                        Coalesce(F('produccion__importe_coste_proximo'), 0.00) +
                        Coalesce(F('produccion__importe_coste_siguiente'), 0.00) +
                        Coalesce(F('produccion__importe_coste_pendiente'), 0.00)),
@@ -2542,7 +2542,7 @@ def tableroCalcular(request):
     certificacion["objetivos"] = None
 
     certificacion["prevision"] = certificacion["presente_mes_1"] + certificacion["presente_mes_2"] + certificacion["presente_mes_3"] + certificacion["presente_mes_4"] + certificacion["presente_resto"] + certificacion["proximo"]+ certificacion["siguiente"]+ certificacion["resto"]
-    
+
     certificacion["realizado"] = certificacion["realizado_presente"]
 
     certificacion["fin"] = certificacion["anterior"] + certificacion["realizado"] + certificacion["prevision"]
@@ -2894,7 +2894,7 @@ def tableroCalcular(request):
     pago["objetivos"] = None
 
     pago["prevision"] = pago['realizado_presente'] + pago["presente_mes_1"] + pago["presente_mes_2"] + pago["presente_mes_3"] + pago["presente_mes_4"] + pago["presente_resto"] + pago["proximo"]+ pago["siguiente"]+ pago["resto"]
-    
+
     pago["realizado"] = pago["realizado_presente"]
 
     pago["fin"] = pago["anterior"] + pago["prevision"]
@@ -2944,11 +2944,131 @@ def tableroCalcular(request):
     cert_cobro['presente_mes_3'] = cert_cobro["presente_mes_2"] + certificacion["presente_mes_3"] - cobro['presente_mes_3']
     cert_cobro['presente_mes_4'] = cert_cobro["presente_mes_3"] + certificacion["presente_mes_4"] - cobro['presente_mes_4']
     cert_cobro['presente_resto'] = cert_cobro["presente_mes_4"] + certificacion["presente_resto"] - cobro['presente_resto']
-
     cert_cobro["fin"] = certificacion["fin"] - cobro["fin"]
-
     # Retorno final
     cobro['realizado'] = cobro["realizado_presente"]
+
+    # Gastos financieros internos
+    gastoFinancieroInterno = {'nombre': 'GASTOS FINANCIEROS INTERNOS',
+            'anterior': 0 ,
+            'realizado': 0 ,
+            'presente_mes_1': 0 ,
+            'presente_mes_2': 0 ,
+            'presente_mes_3': 0 ,
+            'presente_mes_4': 0 ,
+            'presente_resto': 0 ,
+            'presente': 0,
+            'proximo': 0 ,
+            'siguiente': 0 ,
+            'resto': 0 ,
+            'prevision': 0,
+        }
+    query_gastos_financieros_internos = query.all()
+    query_gastos_financieros_internos = query_gastos_financieros_internos.annotate(
+        anterior=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('cobro__importe_anterior'), 0.00) - Coalesce(F('pago__importe_anterior'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('cobro__importe_anterior'), 0.00) - Coalesce(F('pago__importe_anterior'), 0.00)),
+            output_field=DecimalField()
+        ),
+        realizado=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('cobro__importe_presente'), 0.00) - Coalesce(F('pago__importe_presente'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('cobro__importe_presente'), 0.00) - Coalesce(F('pago__importe_presente'), 0.00)),
+            output_field=DecimalField()
+        ),
+        presente_mes_1=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('cobro__importe_mes_1'), 0.00) - Coalesce(F('pago__importe_mes_1'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('cobro__importe_mes_1'), 0.00) - Coalesce(F('pago__importe_mes_1'), 0.00)),
+            output_field=DecimalField()
+        ),
+        presente_mes_2=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('cobro__importe_mes_2'), 0.00) - Coalesce(F('pago__importe_mes_2'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('cobro__importe_mes_2'), 0.00) - Coalesce(F('pago__importe_mes_2'), 0.00)),
+            output_field=DecimalField()
+        ),
+        presente_mes_3=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('cobro__importe_mes_3'), 0.00) - Coalesce(F('pago__importe_mes_3'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('cobro__importe_mes_3'), 0.00) - Coalesce(F('pago__importe_mes_3'), 0.00)),
+            output_field=DecimalField()
+        ),
+        presente_mes_4=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('cobro__importe_mes_4'), 0.00) - Coalesce(F('pago__importe_mes_4'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('cobro__importe_mes_4'), 0.00) - Coalesce(F('pago__importe_mes_4'), 0.00)),
+            output_field=DecimalField()
+        ),
+        presente_resto=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('cobro__importe_resto'), 0.00) - Coalesce(F('pago__importe_resto'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('cobro__importe_resto'), 0.00) - Coalesce(F('pago__importe_resto'), 0.00)),
+            output_field=DecimalField()
+        ),
+        proximo=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('cobro__importe_proximo'), 0.00) - Coalesce(F('pago__importe_proximo'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('cobro__importe_proximo'), 0.00) - Coalesce(F('pago__importe_proximo'), 0.00)),
+            output_field=DecimalField()
+        ),
+        siguiente=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('cobro__importe_siguiente'), 0.00) - Coalesce(F('pago__importe_siguiente'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('cobro__importe_siguiente'), 0.00) - Coalesce(F('pago__importe_siguiente'), 0.00)),
+            output_field=DecimalField()
+        ),
+        resto=Case(
+            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
+                    calcularPrecioConFiltros((Coalesce(F('cobro__importe_pendiente'), 0.00) - Coalesce(F('pago__importe_pendiente'), 0.00)),
+                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
+                    )
+                ),
+            default=(Coalesce(F('cobro__importe_pendiente'), 0.00) - Coalesce(F('pago__importe_pendiente'), 0.00)),
+            output_field=DecimalField()
+        ),
+    ).values()
+
+    for gastos in query_gastos_financieros_internos:
+        gastoFinancieroInterno['anterior'] += calcularGastoFinancieroInterno(gastos, 'anterior')
+        gastoFinancieroInterno['realizado'] += calcularGastoFinancieroInterno(gastos, 'realizado')
+        gastoFinancieroInterno['presente_mes_1'] += calcularGastoFinancieroInterno(gastos, 'presente_mes_1')
+        gastoFinancieroInterno['presente_mes_2'] += calcularGastoFinancieroInterno(gastos, 'presente_mes_2')
+        gastoFinancieroInterno['presente_mes_3'] += calcularGastoFinancieroInterno(gastos, 'presente_mes_3')
+        gastoFinancieroInterno['presente_mes_4'] += calcularGastoFinancieroInterno(gastos, 'presente_mes_4')
+        gastoFinancieroInterno['presente_resto'] += calcularGastoFinancieroInterno(gastos, 'presente_resto')
+
+        gastoFinancieroInterno['proximo'] += calcularGastoFinancieroInterno(gastos, 'proximo')
+        gastoFinancieroInterno['siguiente'] += calcularGastoFinancieroInterno(gastos, 'siguiente')
+        gastoFinancieroInterno['resto'] += calcularGastoFinancieroInterno(gastos, 'resto')
 
     #Calculando margen bruto y margen neto
     keyCalcular = [
@@ -2985,7 +3105,7 @@ def tableroCalcular(request):
         _cobro = cobro[key] if cobro.get(key) else 0
         _pago = pago[key] if pago.get(key)  else 0
         capitalFinanciero[key] = _cobro - _pago
-    
+
     keyPresente =[
         'realizado',
         'presente_mes_1',
@@ -2996,6 +3116,7 @@ def tableroCalcular(request):
         margenBruto['presente'] += margenBruto[key]
         margenNeto['presente'] += margenNeto[key]
         capitalFinanciero['presente'] += capitalFinanciero[key]
+        gastoFinancieroInterno['presente'] += gastoFinancieroInterno[key]
 
     keyPrevision = [
          'presente',
@@ -3006,10 +3127,13 @@ def tableroCalcular(request):
         margenBruto['prevision'] += margenBruto[key]
         margenNeto['prevision'] += margenNeto[key]
         capitalFinanciero['prevision'] += capitalFinanciero[key]
+        gastoFinancieroInterno['prevision'] += gastoFinancieroInterno[key]
 
     capitalFinanciero['fin'] = capitalFinanciero['anterior'] + capitalFinanciero['prevision']
     capitalFinanciero['objetivos'] = margenBruto['fin'] - capitalFinanciero['fin']
 
+    gastoFinancieroInterno['fin'] = gastoFinancieroInterno['anterior'] + gastoFinancieroInterno['prevision']
+    
     retorno = []
     retorno.append(produccion)
     retorno.append(directo)
@@ -3018,6 +3142,7 @@ def tableroCalcular(request):
     retorno.append(central)
     retorno.append(margenNeto)
     retorno.append(coste)
+    retorno.append(gastoFinancieroInterno)
     retorno.append(resultado)
     retorno.append(certificacion)
     retorno.append(prod_cert)
@@ -3028,3 +3153,16 @@ def tableroCalcular(request):
 
     serializado = DashboardSerializer(retorno, many=True)
     return serializado, {'directo': directo}
+
+def calcularGastoFinancieroInterno(gastos, key):
+    calculo = 0
+    propiedad = gastos[key]
+    if propiedad > 0:
+        cf_acreedor = gastos['cf_acreedor']
+        cf_acreedor = cf_acreedor if cf_acreedor else 0
+        calculo += float(propiedad)*(float(cf_acreedor)/100)
+    elif propiedad < 0:
+        cf_deudor = gastos['cf_deudor']
+        cf_deudor = cf_deudor if cf_deudor else 0
+        calculo += float(propiedad)*(float(cf_deudor)/100)
+    return calculo
