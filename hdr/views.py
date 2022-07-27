@@ -21,9 +21,9 @@ from django.conf import settings
 from django.db.models import Value, IntegerField
 
 class HojaDeRutaExcelViewSet(viewsets.ModelViewSet):
-    queryset = HojaDeRuta.objects.all().select_related('produccion', 'certificacion', 'cobro', 'obra',
+    queryset = HojaDeRuta.objects.all().select_related('usuario_creacion', 'usuario_modificacion', 'produccion', 'certificacion', 'cobro', 'obra',
                                                            'obra__empresa', 'obra__delegacion', 'obra__subdelegacion', 'obra__clasificacion', 'obra__situacion',
-                                                            'obra__divisa').prefetch_related('objetivos', 'obra__responsables')
+                                                            'obra__divisa', 'pago').prefetch_related('objetivos', 'obra__responsables')
     serializer_class = HojaDeRutaDetalleSerializer
     permission_classes = (ResponsableOSubditosRespoObraHDR, )
 
@@ -39,25 +39,25 @@ class HojaDeRutaExcelViewSet(viewsets.ModelViewSet):
                 "usuario_id", flat=True))
             # Y que estén abiertas
             # filtro = filtro & Q(estado=2) # Se comenta para mostrar todas y poner iconos en la lista en función del estado
-        queryset = HojaDeRuta.objects.filter(filtro).select_related('produccion', 'certificacion', 'cobro', 'obra',
+        queryset = HojaDeRuta.objects.filter(filtro).select_related('usuario_creacion', 'usuario_modificacion', 'produccion', 'certificacion', 'cobro', 'obra',
                                                            'obra__empresa', 'obra__delegacion', 'obra__subdelegacion', 'obra__clasificacion', 'obra__situacion',
-                                                            'obra__divisa').prefetch_related('objetivos').distinct()
+                                                            'obra__divisa', 'pago').prefetch_related('objetivos', 'obra__responsables').distinct()
         serializer = ReadHojaDeRutaSerializer(
             queryset, context={'request': request}, many=True)
         return Response(serializer.data)
 
 
 class HojaDeRutaExcelAdminViewSet(viewsets.ModelViewSet):
-    queryset = HojaDeRuta.objects.all().select_related('produccion', 'certificacion', 'cobro', 'obra',
+    queryset = HojaDeRuta.objects.all().select_related('usuario_creacion', 'usuario_modificacion', 'produccion', 'certificacion', 'cobro', 'obra',
                                                            'obra__empresa', 'obra__delegacion', 'obra__subdelegacion', 'obra__clasificacion', 'obra__situacion',
-                                                            'obra__divisa').prefetch_related('objetivos', 'obra__responsables')
+                                                            'obra__divisa', 'pago').prefetch_related('objetivos', 'obra__responsables')
     serializer_class = HojaDeRutaDetalleSerializer
     permission_classes = (PerfilAdministrador, )
 
     def list(self, request):
-        queryset = HojaDeRuta.objects.select_related('produccion', 'certificacion', 'cobro', 'obra',
+        queryset = HojaDeRuta.objects.select_related('usuario_creacion', 'usuario_modificacion', 'produccion', 'certificacion', 'cobro', 'obra',
                                                            'obra__empresa', 'obra__delegacion', 'obra__subdelegacion', 'obra__clasificacion', 'obra__situacion',
-                                                            'obra__divisa').prefetch_related("objetivos").distinct()
+                                                            'obra__divisa', 'pago').prefetch_related('objetivos', 'obra__responsables').distinct()
         serializer = ReadHojaDeRutaSerializer(
             queryset, context={'request': request}, many=True)
 
@@ -100,9 +100,9 @@ class HojaDeRutaViewSet(viewsets.ModelViewSet):
     permission_classes = (TienePerfil, )
 
     def list(self, request):
-        queryset = HojaDeRuta.objects.all().select_related('produccion', 'certificacion', 'cobro', 'obra',
+        queryset = HojaDeRuta.objects.all().select_related('usuario_creacion', 'usuario_modificacion', 'produccion', 'certificacion', 'cobro', 'obra',
                                                            'obra__empresa', 'obra__delegacion', 'obra__subdelegacion', 'obra__clasificacion', 'obra__situacion',
-                                                            'obra__divisa').prefetch_related("objetivos")
+                                                            'obra__divisa', 'pago').prefetch_related('objetivos', 'obra__responsables')
         serializer = ReadHojaDeRutaSerializer(
             queryset, context={'request': request}, many=True)
         return Response(serializer.data)
@@ -561,7 +561,9 @@ def hdr_en_cuatrimestre(request):
             "HDRs en cuatrimestre"), status_code=status.HTTP_400_BAD_REQUEST)
     # Buscar las HDRs cerradas para ese año y cuatrimestre
     hdrs = HojaDeRuta.objects.filter(year=year).filter(
-        cuarto=cuarto).filter(estado=1).select_related('obra', 'obra__empresa', 'produccion', 'certificacion', 'cobro').prefetch_related('objetivos').all()
+        cuarto=cuarto).filter(estado=1).select_related('usuario_creacion', 'usuario_modificacion', 'produccion', 'certificacion', 'cobro', 'obra',
+                                                           'obra__empresa', 'obra__delegacion', 'obra__subdelegacion', 'obra__clasificacion', 'obra__situacion',
+                                                            'obra__divisa', 'pago').prefetch_related('objetivos', 'obra__responsables').all()
     # Retornar las hdrs serializadas
     serializado = ReadHojaDeRutaSerializer(hdrs, many=True)
     return Response(serializado.data)
@@ -682,7 +684,7 @@ def tableroObras(request):
             "Tablero de Mandos"), status_code=status.HTTP_400_BAD_REQUEST)
 
     cod_obra = request.data.get("cod_obra", None)
-    
+
     datos = []
     if cod_obra is None:
         query= Obra.objects.filter(hojaderuta__year=year, hojaderuta__cuarto=cuarto).distinct()
@@ -690,7 +692,7 @@ def tableroObras(request):
             request.data.update({"cod_obra": [obra.id]})
             serializado, _ = tableroCalcular(request)
             for data in serializado.data:
-                datos.append({**data, 
+                datos.append({**data,
                     'obra': obra.descripcion,
                     'empresa': obra.empresa.nombre,
                     'subdelegacion': obra.subdelegacion.descripcion,
@@ -702,7 +704,7 @@ def tableroObras(request):
             serializado, _ = tableroCalcular(request)
             obra = Obra.objects.get(id=obra_id)
             for data in serializado.data:
-                datos.append({**data, 
+                datos.append({**data,
                     'obra': obra.descripcion,
                     'empresa': obra.empresa.nombre,
                     'subdelegacion': obra.subdelegacion.descripcion,
@@ -738,8 +740,9 @@ def tableroCalcular(request):
     participacion_licuas = request.data.get("participacionLicuas", None)
     divisa = request.data.get("divisa", None)
     # Creamos la query base a partir de los parámetros recibidos
-    query = HojaDeRuta.objects.filter(year=year, cuarto=cuarto).select_related(
-        'produccion', 'certificacion', 'cobro', 'obra', 'pago').prefetch_related('objetivos', 'obra__responsables')
+    query = HojaDeRuta.objects.filter(year=year, cuarto=cuarto).select_related('usuario_creacion', 'usuario_modificacion', 'produccion', 'certificacion', 'cobro', 'obra',
+                                                           'obra__empresa', 'obra__delegacion', 'obra__subdelegacion', 'obra__clasificacion', 'obra__situacion',
+                                                            'obra__divisa', 'pago').prefetch_related('objetivos', 'obra__responsables')
 
     # Filtramos la query en función del tipo de usuario que tenemos
     usuario = request.user
@@ -2541,7 +2544,7 @@ def tableroCalcular(request):
     certificacion["nombre"] = "(40)_CERTIFICACION"
     certificacion["objetivos"] = None
 
-    certificacion["prevision"] = certificacion["presente_mes_1"] + certificacion["presente_mes_2"] + certificacion["presente_mes_3"] + certificacion["presente_mes_4"] + certificacion["presente_resto"] + certificacion["proximo"]+ certificacion["siguiente"]+ certificacion["resto"]
+    certificacion["prevision"] = certificacion["presente"] + certificacion["proximo"]+ certificacion["siguiente"]+ certificacion["resto"]
 
     certificacion["realizado"] = certificacion["realizado_presente"]
 
@@ -3133,7 +3136,7 @@ def tableroCalcular(request):
     capitalFinanciero['objetivos'] = margenBruto['fin'] - capitalFinanciero['fin']
 
     gastoFinancieroInterno['fin'] = gastoFinancieroInterno['anterior'] + gastoFinancieroInterno['prevision']
-    
+
     retorno = []
     retorno.append(produccion)
     retorno.append(directo)
