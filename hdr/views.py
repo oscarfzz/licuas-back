@@ -2000,368 +2000,6 @@ def tableroCalcular(request):
 
     coste["fin"] = coste["anterior"] + coste["realizado"] + coste["prevision"]
 
-    # Resultado
-    resultado = query.all()
-    resultado = resultado.annotate(
-        importe_anterior=Case(
-            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-                    calcularPrecioConFiltros((Coalesce(F('importe_contrato_anterior'), 0.00) + Coalesce(F('importe_ampliacion_anterior'), 0.00) -
-                        (Coalesce(F('importe_coste_central_anterior'), 0.00) +
-                            Coalesce(F('importe_coste_delegacion_anterior'), 0.00) +
-                            Coalesce(F('importe_coste_directo_anterior'), 0.00))
-                    ),
-                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-                    )
-                ),
-            default=(Coalesce(F('importe_contrato_anterior'), 0.00) + Coalesce(F('importe_ampliacion_anterior'), 0.00) -
-                        (Coalesce(F('importe_coste_central_anterior'), 0.00) +
-                            Coalesce(F('importe_coste_delegacion_anterior'), 0.00) +
-                            Coalesce(F('importe_coste_directo_anterior'), 0.00))),
-            output_field=DecimalField()
-        ),
-        importe_presente=Case(
-            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-                    calcularPrecioConFiltros((
-                    (Coalesce(F('importe_contrato_consolidado'), 0.00)+
-                       Coalesce(F('importe_ampliacion_consolidado'), 0.00)+
-                       # Coalesce(F('importe_contrato_anterior'), 0.00)+
-                       # Coalesce(F('importe_ampliacion_anterior'), 0.00)+
-                       Coalesce(F('produccion__importe_contrato_mes_1'), 0.00)+
-                       Coalesce(F('produccion__importe_contrato_mes_2'), 0.00)+
-                       Coalesce(F('produccion__importe_contrato_mes_3'), 0.00)+
-                       Coalesce(F('produccion__importe_contrato_mes_4'), 0.00)+
-                           Coalesce(F('produccion__importe_contrato_resto'), 0.00)+
-                           Coalesce(F('produccion__importe_ampliaciones_mes_1'), 0.00)+
-                           Coalesce(F('produccion__importe_ampliaciones_mes_2'), 0.00)
-                           +Coalesce(F('produccion__importe_ampliaciones_mes_3'), 0.00)+
-                           Coalesce(F('produccion__importe_ampliaciones_mes_4'), 0.00)
-                           +Coalesce(F('produccion__importe_ampliaciones_resto'), 0.00))-
-                    ((
-                        (((Coalesce(F('importe_contrato_consolidado'), 0.00) + Coalesce(F('importe_ampliacion_consolidado'), 0.00) ) * Coalesce(F('gasto_central'), 0.00)) / 100) +
-
-                        (Coalesce(F('produccion__importe_contrato_mes_1'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_mes_1'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_2'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_mes_2'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_3'), 0.00) +
-                        Coalesce(F('produccion__importe_ampliaciones_mes_3'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_4'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_mes_4'), 0.00)+Coalesce(F('produccion__importe_contrato_resto'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_resto'), 0.00)) * Coalesce(F('gasto_central'), 0.00)/100
-                    )
-                    +
-                    (
-                        (((Coalesce(F('importe_contrato_consolidado'), 0.00) + Coalesce(F('importe_ampliacion_consolidado'), 0.00) ) * Coalesce(F('gasto_delegacion'), 0.00)) / 100) +
-
-                        (Coalesce(F('produccion__importe_contrato_mes_1'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_mes_1'), 0.00) + Coalesce(F('produccion__importe_contrato_mes_2'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_mes_2'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_3'), 0.00) +
-                        Coalesce(F('produccion__importe_ampliaciones_mes_3'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_4'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_mes_4'), 0.00) + Coalesce(F('produccion__importe_contrato_resto'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_resto'), 0.00)) * Coalesce(F('gasto_delegacion'), 0.00)/100
-                    )
-                    +
-                    (
-                        Coalesce(F('importe_coste_directo_consolidado'), 0.00) +
-                        Coalesce(F('produccion__importe_coste_mes_1'), 0.00) + Coalesce(F('produccion__importe_coste_mes_2'), 0.00) +
-                        Coalesce(F('produccion__importe_coste_mes_3'), 0.00) +
-                        Coalesce(F('produccion__importe_coste_mes_4'), 0.00) +
-                        Coalesce(F('produccion__importe_coste_resto'), 0.00)
-                    ))),
-                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-                    )
-                ),
-            default=(
-                    (Coalesce(F('importe_contrato_consolidado'), 0.00)+
-                       Coalesce(F('importe_ampliacion_consolidado'), 0.00)+
-                       # Coalesce(F('importe_contrato_anterior'), 0.00)+
-                       # Coalesce(F('importe_ampliacion_anterior'), 0.00)+
-                       Coalesce(F('produccion__importe_contrato_mes_1'), 0.00)+
-                       Coalesce(F('produccion__importe_contrato_mes_2'), 0.00)+
-                       Coalesce(F('produccion__importe_contrato_mes_3'), 0.00)+
-                       Coalesce(F('produccion__importe_contrato_mes_4'), 0.00)+
-                           Coalesce(F('produccion__importe_contrato_resto'), 0.00)+
-                           Coalesce(F('produccion__importe_ampliaciones_mes_1'), 0.00)+
-                           Coalesce(F('produccion__importe_ampliaciones_mes_2'), 0.00)
-                           +Coalesce(F('produccion__importe_ampliaciones_mes_3'), 0.00)+
-                           Coalesce(F('produccion__importe_ampliaciones_mes_4'), 0.00)
-                           +Coalesce(F('produccion__importe_ampliaciones_resto'), 0.00))-
-                    ((
-                        (((Coalesce(F('importe_contrato_consolidado'), 0.00) + Coalesce(F('importe_ampliacion_consolidado'), 0.00) ) * Coalesce(F('gasto_central'), 0.00)) / 100) +
-
-                        (Coalesce(F('produccion__importe_contrato_mes_1'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_mes_1'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_2'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_mes_2'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_3'), 0.00) +
-                        Coalesce(F('produccion__importe_ampliaciones_mes_3'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_4'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_mes_4'), 0.00)+Coalesce(F('produccion__importe_contrato_resto'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_resto'), 0.00)) * Coalesce(F('gasto_central'), 0.00)/100
-                    )
-                    +
-                    (
-                        (((Coalesce(F('importe_contrato_consolidado'), 0.00) + Coalesce(F('importe_ampliacion_consolidado'), 0.00) ) * Coalesce(F('gasto_delegacion'), 0.00)) / 100) +
-
-                        (Coalesce(F('produccion__importe_contrato_mes_1'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_mes_1'), 0.00) + Coalesce(F('produccion__importe_contrato_mes_2'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_mes_2'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_3'), 0.00) +
-                        Coalesce(F('produccion__importe_ampliaciones_mes_3'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_4'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_mes_4'), 0.00) + Coalesce(F('produccion__importe_contrato_resto'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_resto'), 0.00)) * Coalesce(F('gasto_delegacion'), 0.00)/100
-                    )
-                    +
-                    (
-                        Coalesce(F('importe_coste_directo_consolidado'), 0.00) +
-                        Coalesce(F('produccion__importe_coste_mes_1'), 0.00) + Coalesce(F('produccion__importe_coste_mes_2'), 0.00) +
-                        Coalesce(F('produccion__importe_coste_mes_3'), 0.00) +
-                        Coalesce(F('produccion__importe_coste_mes_4'), 0.00) +
-                        Coalesce(F('produccion__importe_coste_resto'), 0.00)
-                    ))),
-            output_field=DecimalField()
-        ),
-        importe_presente_mes_1=Case(
-            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-                    calcularPrecioConFiltros((Coalesce(produccion["presente_mes_1"], 0.00) - Coalesce(coste["presente_mes_1"], 0.00)),
-                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-                    )
-                ),
-            default=(Coalesce(produccion["presente_mes_1"], 0.00) - Coalesce(coste["presente_mes_1"], 0.00)),
-            output_field=DecimalField()
-        ),
-        importe_presente_mes_2=Case(
-            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-                    calcularPrecioConFiltros((Coalesce(produccion["presente_mes_2"], 0.00) - Coalesce(coste["presente_mes_2"], 0.00)),
-                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-                    )
-                ),
-            default=(Coalesce(produccion["presente_mes_2"], 0.00) - Coalesce(coste["presente_mes_2"], 0.00)),
-            output_field=DecimalField()
-        ),
-        importe_presente_mes_3=Case(
-            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-                    calcularPrecioConFiltros((Coalesce(produccion["presente_mes_3"], 0.00) - Coalesce(coste["presente_mes_3"], 0.00)),
-                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-                    )
-                ),
-            default=(Coalesce(produccion["presente_mes_3"], 0.00) - Coalesce(coste["presente_mes_3"], 0.00)),
-            output_field=DecimalField()
-        ),
-        importe_presente_mes_4=Case(
-            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-                    calcularPrecioConFiltros((Coalesce(produccion["presente_mes_4"], 0.00) - Coalesce(coste["presente_mes_4"], 0.00)),
-                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-                    )
-                ),
-            default=(Coalesce(produccion["presente_mes_4"], 0.00) - Coalesce(coste["presente_mes_4"], 0.00)),
-            output_field=DecimalField()
-        ),
-        importe_presente_resto=Case(
-            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-                    calcularPrecioConFiltros((Coalesce(produccion["presente_resto"], 0.00) - Coalesce(coste["presente_resto"], 0.00)),
-                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-                    )
-                ),
-            default=(Coalesce(produccion["presente_resto"], 0.00) - Coalesce(coste["presente_resto"], 0.00)),
-            output_field=DecimalField()
-        ),
-        importe_proximo=Case(
-            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-                    calcularPrecioConFiltros((Coalesce(F('produccion__importe_contrato_proximo'), 0.00) +
-                        Coalesce(F('produccion__importe_ampliaciones_proximo'), 0.00) -
-                        (Coalesce(F('produccion__importe_coste_proximo'), 0.00) + (Coalesce(F('produccion__importe_contrato_proximo'), 0.00) +
-                                                Coalesce(F('produccion__importe_ampliaciones_proximo'), 0.00))*(Coalesce(F('gasto_delegacion'), 0.00)+Coalesce(F('gasto_central'), 0.00))/100)
-                        ),
-                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-                    )
-                ),
-            default=(Coalesce(F('produccion__importe_contrato_proximo'), 0.00) +
-                    Coalesce(F('produccion__importe_ampliaciones_proximo'), 0.00)-
-                    (Coalesce(F('produccion__importe_coste_proximo'), 0.00) + (Coalesce(F('produccion__importe_contrato_proximo'), 0.00) +
-                                                Coalesce(F('produccion__importe_ampliaciones_proximo'), 0.00))*(Coalesce(F('gasto_delegacion'), 0.00)+Coalesce(F('gasto_central'), 0.00))/100)
-                    ),
-            output_field=DecimalField()
-        ),
-        importe_siguiente=Case(
-            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-                    calcularPrecioConFiltros((Coalesce(F('produccion__importe_contrato_siguiente'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_siguiente'), 0.00))-
-                                            (Coalesce(F('produccion__importe_coste_siguiente'), 0.00) + (Coalesce(F('produccion__importe_contrato_siguiente'), 0.00) +
-                                                Coalesce(F('produccion__importe_ampliaciones_siguiente'), 0.00))*(Coalesce(F('gasto_delegacion'), 0.00)+Coalesce(F('gasto_central'), 0.00))/100),
-                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-                    )
-                ),
-            default=(Coalesce(F('produccion__importe_contrato_siguiente'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_siguiente'), 0.00))-
-                    (Coalesce(F('produccion__importe_coste_siguiente'), 0.00) + (Coalesce(F('produccion__importe_contrato_siguiente'), 0.00) +
-                                                Coalesce(F('produccion__importe_ampliaciones_siguiente'), 0.00))*(Coalesce(F('gasto_delegacion'), 0.00)+Coalesce(F('gasto_central'), 0.00))/100),
-            output_field=DecimalField()
-        ),
-        resto_produccion=Case(
-            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-                    calcularPrecioConFiltros((Coalesce(F('produccion__importe_contrato_pendiente'), 0.00) +
-                        Coalesce(F('produccion__importe_ampliaciones_pendiente'), 0.00)),
-                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-                    )
-                ),
-            default=(Coalesce(F('produccion__importe_contrato_pendiente'), 0.00) +
-                    Coalesce(F('produccion__importe_ampliaciones_pendiente'), 0.00)),
-            output_field=DecimalField()
-        ),
-        resto_coste=Case(
-            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-                    calcularPrecioConFiltros((Coalesce(F('produccion__importe_coste_pendiente'), 0.00) + (Coalesce(F('produccion__importe_contrato_pendiente'), 0.00) +
-                                                                                Coalesce(F('produccion__importe_ampliaciones_pendiente'), 0.00))*(Coalesce(F('gasto_delegacion'), 0.00)+Coalesce(F('gasto_central'), 0.00))/100),
-                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-                    )
-                ),
-            default=(Coalesce(F('produccion__importe_coste_pendiente'), 0.00) + (Coalesce(F('produccion__importe_contrato_pendiente'), 0.00) +
-                                                                                Coalesce(F('produccion__importe_ampliaciones_pendiente'), 0.00))*(Coalesce(F('gasto_delegacion'), 0.00)+Coalesce(F('gasto_central'), 0.00))/100),
-            output_field=DecimalField()
-        ),
-        importe_resto=Case(
-            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-                    calcularPrecioConFiltros((F('resto_produccion')-F('resto_coste')),
-                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-                    )
-                ),
-            default=(F('resto_produccion')-F('resto_coste')),
-            output_field=DecimalField()
-        ),
-        importe_resto_produccion=Case(
-            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-                    calcularPrecioConFiltros((Coalesce(F('produccion__importe_contrato_pendiente'), 0.00) +
-                        Coalesce(F('produccion__importe_ampliaciones_pendiente'), 0.00)),
-                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-                    )
-                ),
-            default=(Coalesce(F('produccion__importe_contrato_pendiente'), 0.00) +
-                    Coalesce(F('produccion__importe_ampliaciones_pendiente'), 0.00)),
-            output_field=DecimalField()
-        ),
-        prevision_produccion=Case(
-            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-                    calcularPrecioConFiltros((Coalesce(F('produccion__importe_contrato_mes_1'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_2'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_3'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_4'), 0.00)+Coalesce(F(
-                        'produccion__importe_contrato_resto'), 0.00)+Coalesce(F('produccion__importe_contrato_proximo'), 0.00)+Coalesce(F('produccion__importe_contrato_siguiente'), 0.00)+Coalesce(F('produccion__importe_contrato_pendiente'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_mes_1'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_mes_2'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_mes_3'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_mes_4'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_resto'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_proximo'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_siguiente'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_pendiente'), 0.00)),
-                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-                    )
-                ),
-            default=(Coalesce(F('produccion__importe_contrato_mes_1'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_2'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_3'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_4'), 0.00)+Coalesce(F(
-                    'produccion__importe_contrato_resto'), 0.00)+Coalesce(F('produccion__importe_contrato_proximo'), 0.00)+Coalesce(F('produccion__importe_contrato_siguiente'), 0.00)+Coalesce(F('produccion__importe_contrato_pendiente'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_mes_1'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_mes_2'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_mes_3'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_mes_4'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_resto'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_proximo'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_siguiente'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_pendiente'), 0.00)),
-            output_field=DecimalField()
-        ),
-        prevision_directo=Coalesce(F('produccion__importe_coste_mes_1'), 0.00) + Coalesce(F('produccion__importe_coste_mes_2'), 0.00) +
-        Coalesce(F('produccion__importe_coste_mes_3'), 0.00) +
-        Coalesce(F('produccion__importe_coste_mes_4'), 0.00) +
-        Coalesce(F('produccion__importe_coste_resto'), 0.00) + Coalesce(F('produccion__importe_coste_proximo'), 0.00) +
-        Coalesce(F('produccion__importe_coste_siguiente'), 0.00) +
-        Coalesce(F('produccion__importe_coste_pendiente'), 0.00),
-        prevision_delegacion=(Coalesce(F('produccion__importe_contrato_mes_1'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_mes_1'), 0.00) + Coalesce(F('produccion__importe_contrato_mes_2'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_mes_2'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_3'), 0.00) +
-                              Coalesce(F('produccion__importe_ampliaciones_mes_3'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_4'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_mes_4'), 0.00) + Coalesce(F('produccion__importe_contrato_resto'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_resto'), 0.00)) * Coalesce(F('gasto_delegacion'), 0.00)/100 + (Coalesce(F('produccion__importe_contrato_proximo'), 0.00) +
-                                                                                                                                                                                                                                                                                                                                                                                        Coalesce(F('produccion__importe_ampliaciones_proximo'), 0.00))*Coalesce(F('gasto_delegacion'), 0.00)/100+(Coalesce(F('produccion__importe_contrato_siguiente'), 0.00) +
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  Coalesce(F('produccion__importe_ampliaciones_siguiente'), 0.00))*Coalesce(F('gasto_delegacion'), 0.00)/100+(Coalesce(F('produccion__importe_contrato_pendiente'), 0.00) +
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              Coalesce(F('produccion__importe_ampliaciones_pendiente'), 0.00))*Coalesce(F('gasto_delegacion'), 0.00)/100,
-        prevision_central=(Coalesce(F('produccion__importe_contrato_mes_1'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_mes_1'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_2'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_mes_2'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_3'), 0.00) +
-                           Coalesce(F('produccion__importe_ampliaciones_mes_3'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_4'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_mes_4'), 0.00)+Coalesce(F('produccion__importe_contrato_resto'), 0.00) + Coalesce(F('produccion__importe_ampliaciones_resto'), 0.00)) * Coalesce(F('gasto_central'), 0.00)/100 + (Coalesce(F('produccion__importe_contrato_proximo'), 0.00) +
-                                                                                                                                                                                                                                                                                                                                                                                Coalesce(F('produccion__importe_ampliaciones_proximo'), 0.00))*Coalesce(F('gasto_central'), 0.00)/100 + (Coalesce(F('produccion__importe_contrato_siguiente'), 0.00) +
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         Coalesce(F('produccion__importe_ampliaciones_siguiente'), 0.00))*Coalesce(F('gasto_central'), 0.00)/100 + (Coalesce(F('produccion__importe_contrato_pendiente'), 0.00) +
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    Coalesce(F('produccion__importe_ampliaciones_pendiente'), 0.00))*Coalesce(F('gasto_central'), 0.00)/100,
-        importe_prevision_resta=F('prevision_directo') +
-        F('prevision_delegacion')+F('prevision_central'),
-        importe_prevision=Case(
-            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-                    calcularPrecioConFiltros((Coalesce(F('produccion__importe_contrato_mes_1'), 0.00)+
-                        Coalesce(F('produccion__importe_contrato_mes_2'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_3'), 0.00)+
-                        Coalesce(F('produccion__importe_contrato_mes_4'), 0.00)+Coalesce(F(
-                        'produccion__importe_contrato_resto'), 0.00)+
-                        Coalesce(F('produccion__importe_contrato_proximo'), 0.00)+Coalesce(F('produccion__importe_contrato_siguiente'), 0.00) +
-                        Coalesce(F('produccion__importe_contrato_pendiente'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_mes_1'), 0.00)+
-                        Coalesce(F('produccion__importe_ampliaciones_mes_2'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_mes_3'), 0.00)+
-                        Coalesce(F('produccion__importe_ampliaciones_mes_4'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_resto'), 0.00)+
-                        Coalesce(F('produccion__importe_ampliaciones_proximo'), 0.00)+
-                        Coalesce(F('produccion__importe_ampliaciones_siguiente'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_pendiente'), 0.00)-
-                        (F('prevision_directo') + F('prevision_delegacion')+F('prevision_central'))
-                        ),
-                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-                    )
-                ),
-            default=(Coalesce(F('produccion__importe_contrato_mes_1'), 0.00)+
-                        Coalesce(F('produccion__importe_contrato_mes_2'), 0.00)+Coalesce(F('produccion__importe_contrato_mes_3'), 0.00)+
-                        Coalesce(F('produccion__importe_contrato_mes_4'), 0.00)+Coalesce(F(
-                        'produccion__importe_contrato_resto'), 0.00)+
-                        Coalesce(F('produccion__importe_contrato_proximo'), 0.00)+Coalesce(F('produccion__importe_contrato_siguiente'), 0.00) +
-                        Coalesce(F('produccion__importe_contrato_pendiente'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_mes_1'), 0.00)+
-                        Coalesce(F('produccion__importe_ampliaciones_mes_2'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_mes_3'), 0.00)+
-                        Coalesce(F('produccion__importe_ampliaciones_mes_4'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_resto'), 0.00)+
-                        Coalesce(F('produccion__importe_ampliaciones_proximo'), 0.00)+
-                        Coalesce(F('produccion__importe_ampliaciones_siguiente'), 0.00)+Coalesce(F('produccion__importe_ampliaciones_pendiente'), 0.00)-
-                        (F('prevision_directo') + F('prevision_delegacion')+F('prevision_central'))
-                        ),
-            output_field=DecimalField()
-        ),
-        prevision_coste=Case(
-            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-                    calcularPrecioConFiltros((F('prevision_produccion') +F('prevision_delegacion')+F('prevision_central')),
-                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-                    )
-                ),
-            default=(F('prevision_produccion') +F('prevision_delegacion')+F('prevision_central')),
-            output_field=DecimalField()
-        ),
-        importe_fin_produccion=Case(
-            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-                    calcularPrecioConFiltros((F('importe_presente')+F('importe_proximo') +F('importe_siguiente')+F('importe_resto_produccion')),
-                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-                    )
-                ),
-            default=(F('importe_presente')+F('importe_proximo') +F('importe_siguiente')+F('importe_resto_produccion')),
-            output_field=DecimalField()
-        ),
-
-        importe_objetivo_venta=Case(
-            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-                    calcularPrecioConFiltros(
-                        (Coalesce(Sum('objetivos__venta'), 0.00)),
-                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-                    )
-                ),
-            default=(Coalesce(Sum('objetivos__venta'), 0.00)),
-            output_field=DecimalField()
-        ),
-
-        importe_objetivo_coste=Case(
-            When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-                    calcularPrecioConFiltros(
-                        (Coalesce(Sum('objetivos__coste'), 0.00)),
-                        Subquery(subquery, output_field=DecimalField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-                    )
-                ),
-            default=(Coalesce(Sum('objetivos__coste'), 0.00)),
-            output_field=DecimalField()
-        ),
-
-        # importe_fin=Case(
-        #     When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-        #             calcularPrecioConFiltros((resultado_fin),
-        #                 Subquery(subquery, output_field=CharField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-        #             )
-        #         ),
-        #     default=(resultado_fin),
-        #     output_field=CharField()
-        # ),
-        # importe_objetivos=Case(
-        #     When(obra__divisa_id__in=[query.id for query in cambios_divisas], then=(
-        #             calcularPrecioConFiltros((F('importe_fin')+Coalesce(Sum('objetivos__venta'), 0.00)),
-        #                 Subquery(subquery, output_field=CharField()), F('obra__participacion_licuas'), activar_cambio, participacion_licuas)
-        #             )
-        #         ),
-        #     default=(F('importe_fin')+Coalesce(Sum('objetivos__venta'), 0.00)),
-        #     output_field=CharField()
-        # ),
-    ).aggregate(
-        anterior=Sum('importe_anterior'),
-        presente=Sum('importe_presente'),
-        presente_mes_1=Sum('importe_presente_mes_1'),
-        presente_mes_2=Sum('importe_presente_mes_2'),
-        presente_mes_3=Sum('importe_presente_mes_3'),
-        presente_mes_4=Sum('importe_presente_mes_4'),
-        presente_resto=Sum('importe_presente_resto'),
-        proximo=Sum('importe_proximo'),
-        siguiente=Sum('importe_siguiente'),
-        # resto=Sum('importe_resto'),
-        prevision=Sum('importe_prevision'),
-        objetivo_venta=Sum('importe_objetivo_venta'),
-        objetivo_coste=Sum('importe_objetivo_coste')
-        #fin=Sum('importe_fin'),
-        #objetivos=Sum('importe_objetivos')
-    )
-    resultado["realizado"] = (produccion['realizado'] - coste['realizado'] )
-
-    resultado["resto"] = (produccion['resto'] - coste['resto'] )
-
-    #Creamos importe fin y objetivos
-    # resultado["objetivos"] = resultado["objetivo_venta"] + resultado["fin"]
-    resultado["objetivos"] = resultado["objetivo_venta"] - resultado["objetivo_coste"]
-
-    resultado["fin"] = produccion_fin_obra - coste_fin_obra
-
-    resultado["nombre"] = "(35)_RESULTADO"
     # Certificación
     certificacion = query.all()
     certificacion = certificacion.annotate(
@@ -3068,6 +2706,8 @@ def tableroCalcular(request):
         gastoFinancieroInterno['presente_mes_3'] += calcularGastoFinancieroInterno(gastos, 'presente_mes_3')
         gastoFinancieroInterno['presente_mes_4'] += calcularGastoFinancieroInterno(gastos, 'presente_mes_4')
         gastoFinancieroInterno['presente_resto'] += calcularGastoFinancieroInterno(gastos, 'presente_resto')
+        
+        gastoFinancieroInterno['presente'] += calcularGastoFinancieroInterno(gastos, 'presente')
 
         gastoFinancieroInterno['proximo'] += calcularGastoFinancieroInterno(gastos, 'proximo')
         gastoFinancieroInterno['siguiente'] += calcularGastoFinancieroInterno(gastos, 'siguiente')
@@ -3109,6 +2749,12 @@ def tableroCalcular(request):
         _pago = pago[key] if pago.get(key)  else 0
         capitalFinanciero[key] = _cobro - _pago
 
+    resultado = {'nombre': '(35)_RESULTADO', 'presente': 0, 'prevision': 0 }
+    for key in keyCalcular:
+        _margenNeto = margenNeto[key] if margenNeto.get(key) else 0
+        _gastoFinancieroInterno = gastoFinancieroInterno[key] if gastoFinancieroInterno.get(key)  else 0
+        resultado[key] = float(_margenNeto) - _gastoFinancieroInterno
+
     keyPresente =[
         'realizado',
         'presente_mes_1',
@@ -3119,7 +2765,10 @@ def tableroCalcular(request):
         margenBruto['presente'] += margenBruto[key]
         margenNeto['presente'] += margenNeto[key]
         capitalFinanciero['presente'] += capitalFinanciero[key]
-        gastoFinancieroInterno['presente'] += gastoFinancieroInterno[key]
+        
+        print('key ', key, ' >> ', gastoFinancieroInterno[key])
+        # gastoFinancieroInterno['presente'] += gastoFinancieroInterno[key]
+        resultado['presente'] += resultado[key]
 
     keyPrevision = [
          'presente',
@@ -3131,11 +2780,14 @@ def tableroCalcular(request):
         margenNeto['prevision'] += margenNeto[key]
         capitalFinanciero['prevision'] += capitalFinanciero[key]
         gastoFinancieroInterno['prevision'] += gastoFinancieroInterno[key]
+        resultado['prevision'] += resultado[key]
 
     capitalFinanciero['fin'] = capitalFinanciero['anterior'] + capitalFinanciero['prevision']
     capitalFinanciero['objetivos'] = margenBruto['fin'] - capitalFinanciero['fin']
 
     gastoFinancieroInterno['fin'] = gastoFinancieroInterno['anterior'] + gastoFinancieroInterno['prevision']
+
+    resultado['fin'] = float(margenNeto['fin']) - float(gastoFinancieroInterno['fin'])
 
     retorno = []
     retorno.append(produccion)
@@ -3159,7 +2811,10 @@ def tableroCalcular(request):
 
 def calcularGastoFinancieroInterno(gastos, key):
     calculo = 0
-    propiedad = gastos[key]
+    if key == 'presente':
+        propiedad = gastos['realizado'] + gastos['presente_mes_1'] + gastos['presente_mes_2'] + gastos['presente_mes_3'] + gastos['presente_mes_4']
+    else:
+        propiedad = gastos[key]
     if propiedad > 0:
         cf_acreedor = gastos['cf_acreedor']
         cf_acreedor = cf_acreedor if cf_acreedor else 0
