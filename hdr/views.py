@@ -1,3 +1,5 @@
+from collections import defaultdict
+from django.db import connection, connections
 from django.forms import DecimalField, IntegerField
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -19,7 +21,7 @@ from django.db.models.functions import Cast
 from general.serializers import EmpleadoSerializer
 from django.conf import settings
 from django.db.models import Value, IntegerField
-
+ 
 class HojaDeRutaExcelViewSet(viewsets.ModelViewSet):
     queryset = HojaDeRuta.objects.all().select_related('usuario_creacion', 'usuario_modificacion', 'produccion', 'certificacion', 'cobro', 'obra',
                                                            'obra__empresa', 'obra__delegacion', 'obra__subdelegacion', 'obra__clasificacion', 'obra__situacion',
@@ -671,6 +673,14 @@ def tablero(request):
     serializado, _ = tableroCalcular(request)
     return Response(serializado.data)
 
+def dictfetchall(cursor):
+     # Get all the row data from the cursor and convert it into a dictionary
+     columns = [col[0] for col in cursor.description]
+     return [
+         dict(zip(columns, row))
+         for row in cursor.fetchall()
+     ]
+
 @api_view(["POST", ])
 @permission_classes([TienePerfil])
 def tableroObras(request):
@@ -684,32 +694,111 @@ def tableroObras(request):
             "Tablero de Mandos"), status_code=status.HTTP_400_BAD_REQUEST)
 
     cod_obra = request.data.get("cod_obra", None)
+    cod_obra = '0020118264'
+
+    cursor = connection.cursor()
+    cursor.execute('''SELECT id_obra, obra, periodo, concepto, importe,
+    empresa.nombre as empresa_descripcion,
+    delegacion.descripcion as delegacion_descripcion,
+    CASE
+        WHEN (delegacion.padre_id=go2.delegacion_id) THEN delegacion.descripcion
+        ELSE ''
+    END as subdelegacion_descripcion
+    FROM (((public.v_datos_obras datos
+   	 JOIN general_empresa empresa ON ((datos.empresa = empresa.id)))
+     JOIN general_obra go2 ON ((datos.id_obra = go2.id)))
+     JOIN general_unidadorganizativa delegacion ON ((go2.delegacion_id = delegacion.id)))
+    WHERE ejercicio = %s AND
+                        cuarto = %s and obra= %s''', [year, cuarto, cod_obra])
+    rows = dictfetchall(cursor)
 
     datos = []
-    if cod_obra is None:
-        query= Obra.objects.filter(hojaderuta__year=year, hojaderuta__cuarto=cuarto).distinct()
-        for obra in query:
-            request.data.update({"cod_obra": [obra.id]})
-            serializado, _ = tableroCalcular(request)
-            for data in serializado.data:
-                datos.append({**data,
-                    'obra': obra.descripcion,
-                    'empresa': obra.empresa.nombre,
-                    'subdelegacion': obra.subdelegacion.descripcion,
-                    'delegacion': obra.delegacion.descripcion,
-                    })
-    else:
-        for obra_id in cod_obra:
-            request.data.update({"cod_obra": [obra_id]})
-            serializado, _ = tableroCalcular(request)
-            obra = Obra.objects.get(id=obra_id)
-            for data in serializado.data:
-                datos.append({**data,
-                    'obra': obra.descripcion,
-                    'empresa': obra.empresa.nombre,
-                    'subdelegacion': obra.subdelegacion.descripcion,
-                    'delegacion': obra.delegacion.descripcion,
-                    })
+    nombres =  {
+           'ProdTotal':  "(20)_PROD.TOTAL",
+           "CosteDirecto":  "(301)_COSTEDIRECTO",
+
+           "MargenBruto":  "MARGEN BRUTO",
+           "MARGENBRUTO": "MARGEN BRUTO",
+           
+           "CtesDeleg":  "(302)_G.G. DELEGACION",
+           "CtesCentral":  "(303)_G.G. GENERALES CENTRAL",
+           "MargenNeto":  "MARGEN NETO",
+           "GastosFinancierosInternos":  "GASTOS FINANCIEROS INTERNOS",
+           "Resultado":  "(35)_RESULTADO",
+           "Certificacion":  "(40)_CERTIFICACION",
+           "Pagos":  "PAGOS",
+           "CapitalFinanciero":  "CAPITAL FINANCIERO",
+           
+           "ProduccionAmpl":  "PRODUC. - CERTIFIC (A Origen)",
+           "Cobros":  "(50)_COBRO (RECEP. DOCUMENTO)",
+           "ProduccionCI":  "CERTIFIC. - COBRO (A Origen)",
+           "CosteTotal":  "(30)_COSTE",
+    }
+    conceptos =[
+        "Certificacion",
+        "Cobros",
+        "CosteDirecto",
+        "CosteTotal",
+        "CtesCentral",
+        "CtesDeleg",
+        "MARGENBRUTO",
+        "MargenBruto",
+        "MargenNeto",
+        "ProdTotal",
+        "ProduccionAmpl",
+        "ProduccionCI",
+        "Resultado",
+        "CapitalFinanciero",
+        "GastosFinancierosInternos",
+        "Pagos",
+    ]
+    
+    obras_info = {}
+    for row in rows:
+        idObra = str(row["id_obra"]) 
+        if obras_info.get(idObra) :
+            pass
+        else:
+            obras_info[idObra] = {
+                'id_obra': idObra,
+                'obra': idObra,
+                'empresa': row["empresa_descripcion"],
+                "Certificacion": [],
+                "Cobros": [],
+                "CosteDirecto": [],
+                "CosteTotal": [],
+                "CtesCentral": [],
+                "CtesDeleg": [],
+
+                "MARGENBRUTO": [],
+                "MargenBruto": [],
+
+                "MargenNeto": [],
+                "ProdTotal": [],
+                "ProduccionAmpl": [],
+                "ProduccionCI": [],
+                "Resultado": [],
+                "CapitalFinanciero": [],
+                "GastosFinancierosInternos": [],
+                "Pagos": [],            
+            }
+
+        obras_info[idObra][row['concepto']].append({row['periodo']: row['importe'], 'nombre': nombres[row['concepto']]})
+
+    for obra_info in obras_info:
+        for concepto_key in conceptos:
+            if obras_info[obra_info][concepto_key]:
+                _concepto ={}
+                for concepto in obras_info[obra_info][concepto_key]:
+                    _concepto= {**_concepto, **concepto}
+                datos.append({
+                    **_concepto,
+                    'id_obra': obra_info,
+                    'obra': obras_info[obra_info]['obra'],
+                    'empresa': obras_info[obra_info]['empresa'],
+                })  
+            else:
+                print('en la obra', obra_info, ' no Existe el concepto: ', concepto_key)
     return Response(datos)
 
 
@@ -2765,9 +2854,6 @@ def tableroCalcular(request):
         margenBruto['presente'] += margenBruto[key]
         margenNeto['presente'] += margenNeto[key]
         capitalFinanciero['presente'] += capitalFinanciero[key]
-        
-        print('key ', key, ' >> ', gastoFinancieroInterno[key])
-        # gastoFinancieroInterno['presente'] += gastoFinancieroInterno[key]
         resultado['presente'] += resultado[key]
 
     keyPrevision = [
