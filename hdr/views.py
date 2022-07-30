@@ -2303,7 +2303,7 @@ def tableroCalcular(request):
 
     certificacion["realizado"] = certificacion["realizado_presente"]
 
-    certificacion["fin"] = certificacion["anterior"] + certificacion["realizado"] + certificacion["prevision"]
+    certificacion["fin"] = certificacion["anterior"] + certificacion["prevision"]
 
 
     # Cobro
