@@ -853,7 +853,7 @@ UNION
     hh.cuarto,
     'TotalPrevision'::text AS periodo,
     'CapitalFinanciero'::text AS concepto,
-    ((((((((COALESCE(hc.importe_presente, 0.00) + COALESCE(hc.importe_mes_1, 0.00)) + COALESCE(hc.importe_mes_2, 0.00)) + COALESCE(hc.importe_mes_3, 0.00)) + COALESCE(hc.importe_mes_4, 0.00)) + COALESCE(hc.importe_resto, 0.00)) + COALESCE(hc.importe_proximo, 0.00)) + COALESCE(hc.importe_siguiente, 0.00)) + COALESCE(hc.importe_resto, 0.00)) - ((((((((COALESCE(hp.importe_presente, 0.00) + COALESCE(hp.importe_mes_1, 0.00)) + COALESCE(hp.importe_mes_2, 0.00)) + COALESCE(hp.importe_mes_3, 0.00)) + COALESCE(hp.importe_mes_4, 0.00)) + COALESCE(hp.importe_resto, 0.00)) + COALESCE(hp.importe_proximo, 0.00)) + COALESCE(hp.importe_siguiente, 0.00)) + COALESCE(hp.importe_resto, 0.00)) AS importe,
+    ((((((COALESCE(hc.importe_presente, 0.00) + COALESCE(hc.importe_mes_1, 0.00)) + COALESCE(hc.importe_mes_2, 0.00)) + COALESCE(hc.importe_mes_3, 0.00)) + COALESCE(hc.importe_mes_4, 0.00)) + COALESCE(hc.importe_resto, 0.00)) - (((((COALESCE(hp.importe_presente, 0.00) + COALESCE(hp.importe_mes_1, 0.00)) + COALESCE(hp.importe_mes_2, 0.00)) + COALESCE(hp.importe_mes_3, 0.00)) + COALESCE(hp.importe_mes_4, 0.00)) + COALESCE(hp.importe_resto, 0.00))) + (((COALESCE(hc.importe_proximo, 0.00)) - COALESCE(hp.importe_proximo, 0.00))) + (((COALESCE(hc.importe_siguiente, 0.00)) - COALESCE(hp.importe_siguiente, 0.00))) + (((COALESCE(hc.importe_pendiente, 0.00)) - COALESCE(hp.importe_pendiente, 0.00))) AS importe,
     go2.participacion_licuas,
     COALESCE(( SELECT gc.importe
            FROM general_cambiodivisa gc
@@ -1525,7 +1525,7 @@ UNION
     hh.cuarto,
     'TotalPrevision'::text AS periodo,
     'Pagos'::text AS concepto,
-    ((((((((COALESCE(hp.importe_presente, 0.00) + COALESCE(hp.importe_mes_1, 0.00)) + COALESCE(hp.importe_mes_2, 0.00)) + COALESCE(hp.importe_mes_3, 0.00)) + COALESCE(hp.importe_mes_4, 0.00)) + COALESCE(hp.importe_resto, 0.00)) + COALESCE(hp.importe_proximo, 0.00)) + COALESCE(hp.importe_siguiente, 0.00)) + COALESCE(hp.importe_resto, 0.00)) AS importe,
+    ((((((COALESCE(hp.importe_presente, 0.00) + COALESCE(hp.importe_mes_1, 0.00)) + COALESCE(hp.importe_mes_2, 0.00)) + COALESCE(hp.importe_mes_3, 0.00)) + COALESCE(hp.importe_mes_4, 0.00)) + COALESCE(hp.importe_resto, 0.00)))+(COALESCE(hp.importe_proximo, 0.00))+(COALESCE(hp.importe_siguiente, 0.00))+(COALESCE(hp.importe_pendiente, 0.00)) AS importe,
     go2.participacion_licuas,
     COALESCE(( SELECT gc.importe
            FROM general_cambiodivisa gc
