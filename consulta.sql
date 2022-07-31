@@ -698,23 +698,6 @@ UNION
     go2.codigo AS obra,
     hh.year AS ejercicio,
     hh.cuarto,
-    'Mes1'::text AS periodo,
-    'CapitalFinanciero'::text AS concepto,
-    ((COALESCE(hc.importe_mes_1, 0.00)) - COALESCE(hp.importe_mes_1, 0.00))  AS importe,
-    go2.participacion_licuas,
-    COALESCE(( SELECT gc.importe
-           FROM general_cambiodivisa gc
-          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
-   FROM ((hdr_hojaderuta hh
-   	 JOIN hdr_hojaderutacobro hc ON ((hh.id = hc.hoja_id))
-     JOIN hdr_hojaderutapago hp ON ((hh.id = hp.hoja_id)))
-     JOIN general_obra go2 ON ((hh.obra_id = go2.id)))
-UNION
- SELECT go2.empresa_id AS empresa,
-    go2.id AS id_obra,
-    go2.codigo AS obra,
-    hh.year AS ejercicio,
-    hh.cuarto,
     'Mes2'::text AS periodo,
     'CapitalFinanciero'::text AS concepto,
     ((COALESCE(hc.importe_mes_2, 0.00)) - COALESCE(hp.importe_mes_2, 0.00))  AS importe,
@@ -3345,7 +3328,8 @@ UNION
     hh.cuarto,
     'Objetivos'::text AS periodo,
     'Cobros'::text AS concepto,
-    0 AS importe,
+    (((((COALESCE(hh.importe_contrato_anterior, 0.00) + COALESCE(hh.importe_ampliacion_anterior, 0.00)) + (COALESCE(hh.importe_contrato_consolidado, 0.00) + COALESCE(hh.importe_ampliacion_consolidado, 0.00))) + (((((((((((((((COALESCE(hp.importe_contrato_mes_1, 0.00) + COALESCE(hp.importe_contrato_mes_2, 0.00)) + COALESCE(hp.importe_contrato_mes_3, 0.00)) + COALESCE(hp.importe_contrato_mes_4, 0.00)) + COALESCE(hp.importe_contrato_resto, 0.00)) + COALESCE(hp.importe_contrato_proximo, 0.00)) + COALESCE(hp.importe_contrato_siguiente, 0.00)) + COALESCE(hp.importe_contrato_pendiente, 0.00)) + COALESCE(hp.importe_ampliaciones_mes_1, 0.00)) + COALESCE(hp.importe_ampliaciones_mes_2, 0.00)) + COALESCE(hp.importe_ampliaciones_mes_3, 0.00)) + COALESCE(hp.importe_ampliaciones_mes_4, 0.00)) + COALESCE(hp.importe_ampliaciones_resto, 0.00)) + COALESCE(hp.importe_ampliaciones_proximo, 0.00)) + COALESCE(hp.importe_ampliaciones_siguiente, 0.00)) + COALESCE(hp.importe_ampliaciones_pendiente, 0.00)))) - ((((((((((COALESCE(hc.importe_presente, 0.00) + COALESCE(hc.importe_mes_1, 0.00)) + COALESCE(hc.importe_mes_2, 0.00)) + COALESCE(hc.importe_mes_3, 0.00)) + COALESCE(hc.importe_mes_4, 0.00)) + COALESCE(hc.importe_resto, 0.00)) + COALESCE(hc.importe_proximo, 0.00)) + COALESCE(hc.importe_siguiente, 0.00)) + COALESCE(hc.importe_pendiente, 0.00)) + COALESCE(hc.importe_anterior, 0.00))))
+    AS importe,
     go2.participacion_licuas,
     COALESCE(( SELECT gc.importe
            FROM general_cambiodivisa gc
@@ -3576,4 +3560,502 @@ UNION
    FROM ((hdr_hojaderuta hh
      LEFT JOIN hdr_hojaderutaproduccion hp ON ((hh.id = hp.hoja_id)))
      JOIN general_obra go2 ON ((hh.obra_id = go2.id)))
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Anterior'::text AS periodo,
+    'ProducCertificOrigen'::text AS concepto,
+    (((COALESCE(hh.importe_contrato_anterior, 0.00) + COALESCE(hh.importe_ampliacion_anterior, 0.00))) - (COALESCE(hc.importe_anterior, 0.00))) AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM ((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id)))  
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Consolidado'::text AS periodo,
+    'ProducCertificOrigen'::text AS concepto,
+    (((COALESCE(hh.importe_contrato_consolidado, 0.00) + COALESCE(hh.importe_ampliacion_consolidado, 0.00))) - (COALESCE(hc.importe_presente, 0.00)))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM ((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id)))  
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Mes1'::text AS periodo,
+    'ProducCertificOrigen'::text AS concepto,
+    (((COALESCE(hp.importe_contrato_mes_1, 0.00) + COALESCE(hp.importe_ampliaciones_mes_1, 0.00))) - (COALESCE(hc.importe_mes_1, 0.00)))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN hdr_hojaderutaproduccion hp ON ((hh.id = hp.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id)))  
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Mes2'::text AS periodo,
+    'ProducCertificOrigen'::text AS concepto,
+    (((COALESCE(hp.importe_contrato_mes_2, 0.00) + COALESCE(hp.importe_ampliaciones_mes_2, 0.00))) - (COALESCE(hc.importe_mes_2, 0.00)))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN hdr_hojaderutaproduccion hp ON ((hh.id = hp.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id)))  
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Mes3'::text AS periodo,
+    'ProducCertificOrigen'::text AS concepto,
+    (((COALESCE(hp.importe_contrato_mes_3, 0.00) + COALESCE(hp.importe_ampliaciones_mes_3, 0.00))) - (COALESCE(hc.importe_mes_3, 0.00)))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN hdr_hojaderutaproduccion hp ON ((hh.id = hp.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id)))  
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Mes4'::text AS periodo,
+    'ProducCertificOrigen'::text AS concepto,
+    (((COALESCE(hp.importe_contrato_mes_4, 0.00) + COALESCE(hp.importe_ampliaciones_mes_4, 0.00))) - (COALESCE(hc.importe_mes_4, 0.00)))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN hdr_hojaderutaproduccion hp ON ((hh.id = hp.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id)))  
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Pendiente'::text AS periodo,
+    'ProducCertificOrigen'::text AS concepto,
+    (((COALESCE(hp.importe_contrato_resto, 0.00) + COALESCE(hp.importe_ampliaciones_resto, 0.00))) - (COALESCE(hc.importe_resto, 0.00)))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN hdr_hojaderutaproduccion hp ON ((hh.id = hp.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id)))  
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'ejercicioActual'::text AS periodo,
+    'ProducCertificOrigen'::text AS concepto,
+    ((((COALESCE(hh.importe_contrato_consolidado, 0.00) + COALESCE(hh.importe_ampliacion_consolidado, 0.00))) - (COALESCE(hc.importe_presente, 0.00))) + (((COALESCE(hp.importe_contrato_mes_1, 0.00) + COALESCE(hp.importe_ampliaciones_mes_1, 0.00))) - (COALESCE(hc.importe_mes_1, 0.00))) + (((COALESCE(hp.importe_contrato_mes_2, 0.00) + COALESCE(hp.importe_ampliaciones_mes_2, 0.00))) - (COALESCE(hc.importe_mes_2, 0.00))) + (((COALESCE(hp.importe_contrato_mes_3, 0.00) + COALESCE(hp.importe_ampliaciones_mes_3, 0.00))) - (COALESCE(hc.importe_mes_3, 0.00))) + (((COALESCE(hp.importe_contrato_mes_4, 0.00) + COALESCE(hp.importe_ampliaciones_mes_4, 0.00))) - (COALESCE(hc.importe_mes_4, 0.00))))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN hdr_hojaderutaproduccion hp ON ((hh.id = hp.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id)))  
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Proximo'::text AS periodo,
+    'ProducCertificOrigen'::text AS concepto,
+    (((COALESCE(hp.importe_contrato_proximo, 0.00) + COALESCE(hp.importe_ampliaciones_proximo, 0.00))) - (COALESCE(hc.importe_proximo, 0.00)))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN hdr_hojaderutaproduccion hp ON ((hh.id = hp.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id)))  
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Siguiente'::text AS periodo,
+    'ProducCertificOrigen'::text AS concepto,
+    (((COALESCE(hp.importe_contrato_siguiente, 0.00) + COALESCE(hp.importe_ampliaciones_siguiente, 0.00))) - (COALESCE(hc.importe_siguiente, 0.00)))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN hdr_hojaderutaproduccion hp ON ((hh.id = hp.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id)))  
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Resto'::text AS periodo,
+    'ProducCertificOrigen'::text AS concepto,
+    (((COALESCE(hp.importe_contrato_pendiente, 0.00) + COALESCE(hp.importe_ampliaciones_pendiente, 0.00))) - (COALESCE(hc.importe_pendiente, 0.00)))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN hdr_hojaderutaproduccion hp ON ((hh.id = hp.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id)))  
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'TotalPrevision'::text AS periodo,
+    'ProducCertificOrigen'::text AS concepto,
+    (((((COALESCE(hh.importe_contrato_consolidado, 0.00) + COALESCE(hh.importe_ampliacion_consolidado, 0.00))) - (COALESCE(hc.importe_presente, 0.00))) + (((COALESCE(hp.importe_contrato_mes_1, 0.00) + COALESCE(hp.importe_ampliaciones_mes_1, 0.00))) - (COALESCE(hc.importe_mes_1, 0.00))) + (((COALESCE(hp.importe_contrato_mes_2, 0.00) + COALESCE(hp.importe_ampliaciones_mes_2, 0.00))) - (COALESCE(hc.importe_mes_2, 0.00))) + (((COALESCE(hp.importe_contrato_mes_3, 0.00) + COALESCE(hp.importe_ampliaciones_mes_3, 0.00))) - (COALESCE(hc.importe_mes_3, 0.00))) + (((COALESCE(hp.importe_contrato_mes_4, 0.00) + COALESCE(hp.importe_ampliaciones_mes_4, 0.00))) - (COALESCE(hc.importe_mes_4, 0.00)))) + (((COALESCE(hp.importe_contrato_proximo, 0.00) + COALESCE(hp.importe_ampliaciones_proximo, 0.00))) - (COALESCE(hc.importe_proximo, 0.00))) + (((COALESCE(hp.importe_contrato_siguiente, 0.00) + COALESCE(hp.importe_ampliaciones_siguiente, 0.00))) - (COALESCE(hc.importe_siguiente, 0.00))) + (((COALESCE(hp.importe_contrato_pendiente, 0.00) + COALESCE(hp.importe_ampliaciones_pendiente, 0.00))) - (COALESCE(hc.importe_pendiente, 0.00))))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN hdr_hojaderutaproduccion hp ON ((hh.id = hp.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id)))  
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'FinObra'::text AS periodo,
+    'ProducCertificOrigen'::text AS concepto,
+    (((((COALESCE(hh.importe_contrato_anterior, 0.00) + COALESCE(hh.importe_ampliacion_anterior, 0.00)) + (COALESCE(hh.importe_contrato_consolidado, 0.00) + COALESCE(hh.importe_ampliacion_consolidado, 0.00))) + (((((((((((((((COALESCE(hp.importe_contrato_mes_1, 0.00) + COALESCE(hp.importe_contrato_mes_2, 0.00)) + COALESCE(hp.importe_contrato_mes_3, 0.00)) + COALESCE(hp.importe_contrato_mes_4, 0.00)) + COALESCE(hp.importe_contrato_resto, 0.00)) + COALESCE(hp.importe_contrato_proximo, 0.00)) + COALESCE(hp.importe_contrato_siguiente, 0.00)) + COALESCE(hp.importe_contrato_pendiente, 0.00)) + COALESCE(hp.importe_ampliaciones_mes_1, 0.00)) + COALESCE(hp.importe_ampliaciones_mes_2, 0.00)) + COALESCE(hp.importe_ampliaciones_mes_3, 0.00)) + COALESCE(hp.importe_ampliaciones_mes_4, 0.00)) + COALESCE(hp.importe_ampliaciones_resto, 0.00)) + COALESCE(hp.importe_ampliaciones_proximo, 0.00)) + COALESCE(hp.importe_ampliaciones_siguiente, 0.00)) + COALESCE(hp.importe_ampliaciones_pendiente, 0.00)))) - (((COALESCE(hc.importe_anterior, 0.00) + COALESCE(hc.importe_presente, 0.00)) + (((((((COALESCE(hc.importe_mes_1, 0.00) + COALESCE(hc.importe_mes_2, 0.00)) + COALESCE(hc.importe_mes_3, 0.00)) + COALESCE(hc.importe_mes_4, 0.00)) + COALESCE(hc.importe_resto, 0.00)) + COALESCE(hc.importe_proximo, 0.00)) + COALESCE(hc.importe_siguiente, 0.00)) + COALESCE(hc.importe_pendiente, 0.00)))))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     LEFT JOIN hdr_hojaderutaproduccion hp ON ((hh.id = hp.hoja_id)))
+     LEFT JOIN general_obra go2 ON ((hh.obra_id = go2.id)))  
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Objetivos'::text AS periodo,
+    'ProducCertificOrigen'::text AS concepto,
+    0 AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM ((hdr_hojaderuta hh
+     LEFT JOIN hdr_hojaderutaproduccion hp ON ((hh.id = hp.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id)))  
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Anterior'::text AS periodo,
+    'CertificCobroOrigen'::text AS concepto,
+    ((COALESCE(hc.importe_anterior, 0.00)) - (COALESCE(hcobro.importe_anterior, 0.00)))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacobro hcobro ON ((hh.id = hcobro.hoja_id)))
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id))) 
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Consolidado'::text AS periodo,
+    'CertificCobroOrigen'::text AS concepto,
+    ((COALESCE(hc.importe_presente, 0.00)) - (COALESCE(hcobro.importe_presente, 0.00)))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacobro hcobro ON ((hh.id = hcobro.hoja_id)))
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id))) 
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Mes1'::text AS periodo,
+    'CertificCobroOrigen'::text AS concepto,
+    ((COALESCE(hc.importe_mes_1, 0.00)) - (COALESCE(hcobro.importe_mes_1, 0.00)))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacobro hcobro ON ((hh.id = hcobro.hoja_id)))
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id))) 
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Mes2'::text AS periodo,
+    'CertificCobroOrigen'::text AS concepto,
+    ((COALESCE(hc.importe_mes_2, 0.00)) - (COALESCE(hcobro.importe_mes_2, 0.00)))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacobro hcobro ON ((hh.id = hcobro.hoja_id)))
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id))) 
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Mes3'::text AS periodo,
+    'CertificCobroOrigen'::text AS concepto,
+    ((COALESCE(hc.importe_mes_3, 0.00)) - (COALESCE(hcobro.importe_mes_3, 0.00)))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacobro hcobro ON ((hh.id = hcobro.hoja_id)))
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id))) 
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Mes4'::text AS periodo,
+    'CertificCobroOrigen'::text AS concepto,
+    ((COALESCE(hc.importe_mes_4, 0.00)) - (COALESCE(hcobro.importe_mes_4, 0.00)))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacobro hcobro ON ((hh.id = hcobro.hoja_id)))
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id))) 
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Pendiente'::text AS periodo,
+    'CertificCobroOrigen'::text AS concepto,
+    ((COALESCE(hc.importe_resto, 0.00)) - (COALESCE(hcobro.importe_resto, 0.00)))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacobro hcobro ON ((hh.id = hcobro.hoja_id)))
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id))) 
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'ejercicioActual'::text AS periodo,
+    'CertificCobroOrigen'::text AS concepto,
+    (((COALESCE(hc.importe_presente, 0.00)) - (COALESCE(hcobro.importe_presente, 0.00))) + ((COALESCE(hc.importe_mes_1, 0.00)) - (COALESCE(hcobro.importe_mes_1, 0.00))) + ((COALESCE(hc.importe_mes_2, 0.00)) - (COALESCE(hcobro.importe_mes_2, 0.00))) + ((COALESCE(hc.importe_mes_3, 0.00)) - (COALESCE(hcobro.importe_mes_3, 0.00))) + ((COALESCE(hc.importe_mes_4, 0.00)) - (COALESCE(hcobro.importe_mes_4, 0.00))))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacobro hcobro ON ((hh.id = hcobro.hoja_id)))
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id))) 
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Proximo'::text AS periodo,
+    'CertificCobroOrigen'::text AS concepto,
+    ((COALESCE(hc.importe_proximo, 0.00)) - (COALESCE(hcobro.importe_proximo, 0.00))) AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacobro hcobro ON ((hh.id = hcobro.hoja_id)))
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id))) 
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Siguiente'::text AS periodo,
+    'CertificCobroOrigen'::text AS concepto,
+    ((COALESCE(hc.importe_siguiente, 0.00)) - (COALESCE(hcobro.importe_siguiente, 0.00))) AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacobro hcobro ON ((hh.id = hcobro.hoja_id)))
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id))) 
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Resto'::text AS periodo,
+    'CertificCobroOrigen'::text AS concepto,
+    ((COALESCE(hc.importe_pendiente, 0.00)) - (COALESCE(hcobro.importe_pendiente, 0.00))) AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM (((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacobro hcobro ON ((hh.id = hcobro.hoja_id)))
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id))) 
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'TotalPrevision'::text AS periodo,
+    'CertificCobroOrigen'::text AS concepto,
+    ((((COALESCE(hc.importe_presente, 0.00)) - (COALESCE(hcobro.importe_presente, 0.00))) + ((COALESCE(hc.importe_mes_1, 0.00)) - (COALESCE(hcobro.importe_mes_1, 0.00))) + ((COALESCE(hc.importe_mes_2, 0.00)) - (COALESCE(hcobro.importe_mes_2, 0.00))) + ((COALESCE(hc.importe_mes_3, 0.00)) - (COALESCE(hcobro.importe_mes_3, 0.00))) + ((COALESCE(hc.importe_mes_4, 0.00)) - (COALESCE(hcobro.importe_mes_4, 0.00)))) + ((COALESCE(hc.importe_proximo, 0.00)) - (COALESCE(hcobro.importe_proximo, 0.00))) + ((COALESCE(hc.importe_siguiente, 0.00)) - (COALESCE(hcobro.importe_siguiente, 0.00))) + ((COALESCE(hc.importe_pendiente, 0.00)) - (COALESCE(hcobro.importe_pendiente, 0.00))))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM ((((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacobro hcobro ON ((hh.id = hcobro.hoja_id)))
+     JOIN hdr_hojaderutaproduccion hp ON ((hh.id = hp.hoja_id)))
+     JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id))) 
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'FinObra'::text AS periodo,
+    'CertificCobroOrigen'::text AS concepto,
+    ((((COALESCE(hc.importe_anterior, 0.00)) - (COALESCE(hcobro.importe_anterior, 0.00)))) + (((((COALESCE(hc.importe_presente, 0.00)) - (COALESCE(hcobro.importe_presente, 0.00))) + ((COALESCE(hc.importe_mes_1, 0.00)) - (COALESCE(hcobro.importe_mes_1, 0.00))) + ((COALESCE(hc.importe_mes_2, 0.00)) - (COALESCE(hcobro.importe_mes_2, 0.00))) + ((COALESCE(hc.importe_mes_3, 0.00)) - (COALESCE(hcobro.importe_mes_3, 0.00))) + ((COALESCE(hc.importe_mes_4, 0.00)) - (COALESCE(hcobro.importe_mes_4, 0.00)))) + ((COALESCE(hc.importe_proximo, 0.00)) - (COALESCE(hcobro.importe_proximo, 0.00))) + ((COALESCE(hc.importe_siguiente, 0.00)) - (COALESCE(hcobro.importe_siguiente, 0.00))) + ((COALESCE(hc.importe_pendiente, 0.00)) - (COALESCE(hcobro.importe_pendiente, 0.00))))))
+    AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM ((((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacobro hcobro ON ((hh.id = hcobro.hoja_id)))
+     LEFT JOIN hdr_hojaderutaproduccion hp ON ((hh.id = hp.hoja_id)))
+     LEFT JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id))) 
+UNION
+ SELECT go2.empresa_id AS empresa,
+    go2.id AS id_obra,
+    go2.codigo AS obra,
+    hh.year AS ejercicio,
+    hh.cuarto,
+    'Objetivos'::text AS periodo,
+    'CertificCobroOrigen'::text AS concepto,
+    0 AS importe,
+    go2.participacion_licuas,
+    COALESCE(( SELECT gc.importe
+           FROM general_cambiodivisa gc
+          WHERE ((go2.divisa_id = gc.divisa_id) AND (gc.year = hh.year) AND (gc.cuarto = hh.cuarto))), 0.00) AS conversion_euros
+   FROM ((((hdr_hojaderuta hh
+     JOIN hdr_hojaderutacobro hcobro ON ((hh.id = hcobro.hoja_id)))
+     LEFT JOIN hdr_hojaderutaproduccion hp ON ((hh.id = hp.hoja_id)))
+     LEFT JOIN hdr_hojaderutacertificacion hc ON ((hh.id = hc.hoja_id)))
+     JOIN general_obra go2 ON ((hh.obra_id = go2.id))) 
   ORDER BY 1, 3, 6, 7, 4, 5;

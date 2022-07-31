@@ -754,9 +754,11 @@ def tableroObras(request):
            "Pagos":  "PAGOS",
            "CapitalFinanciero":  "CAPITAL FINANCIERO",
 
-           "ProduccionAmpl":  "PRODUC. - CERTIFIC (A Origen)",
+           "ProducCertificOrigen":  "PRODUC. - CERTIFIC (A Origen)",
            "Cobros":  "(50)_COBRO (RECEP. DOCUMENTO)",
-           "ProduccionCI":  "CERTIFIC. - COBRO (A Origen)",
+           "CertificCobroOrigen":  "CERTIFIC. - COBRO (A Origen)",
+           "ProduccionAmpl":  "Producción de ampliaciones",
+           "ProduccionCI":  "Producción del contrato inicial",
            "CosteTotal":  "(30)_COSTE",
     }
     conceptos =[
@@ -770,8 +772,8 @@ def tableroObras(request):
         "MargenBruto",
         "MargenNeto",
         "ProdTotal",
-        "ProduccionAmpl",
-        "ProduccionCI",
+        "ProducCertificOrigen",
+        "CertificCobroOrigen",
         "Resultado",
         "CapitalFinanciero",
         "GastosFinancierosInternos",
@@ -780,6 +782,8 @@ def tableroObras(request):
 
     obras_info = {}
     for row in rows:
+        if row['concepto'] in ['ProduccionAmpl', 'ProduccionCI']:
+            continue
         idObra = str(row["id_obra"])
         if obras_info.get(idObra) :
             pass
@@ -802,8 +806,8 @@ def tableroObras(request):
 
                 "MargenNeto": [],
                 "ProdTotal": [],
-                "ProduccionAmpl": [],
-                "ProduccionCI": [],
+                "ProducCertificOrigen": [],
+                "CertificCobroOrigen": [],
                 "Resultado": [],
                 "CapitalFinanciero": [],
                 "GastosFinancierosInternos": [],
@@ -2658,52 +2662,6 @@ def tableroCalcular(request):
     pago["fin"] = pago["anterior"] + pago["prevision"]
     pago['realizado'] = pago["realizado_presente"]
     pago['objetivos'] = directo['fin'] - pago['fin']
-
-    # Producción - Certificación
-    prod_cert = {}
-    prod_cert["anterior"] = produccion["anterior"] - certificacion["anterior"]
-    prod_cert["presente"] = produccion["presente"] - certificacion["presente"] + prod_cert["anterior"]
-    prod_cert["proximo"] = produccion["proximo"] - certificacion["proximo"] + prod_cert["presente"]
-    prod_cert["siguiente"] = produccion["siguiente"] - certificacion["siguiente"] + prod_cert["proximo"]
-    prod_cert["resto"] = produccion["resto"] - certificacion["resto"] + prod_cert["siguiente"]
-    #prod_cert["prevision"] = produccion["prevision"] - certificacion["prevision"] + prod_cert["resto"]
-
-    prod_cert["nombre"] = "PRODUC. - CERTIFIC (A Origen)"
-    prod_cert['contrato_consolidado'] = produccion['contrato_consolidado']
-    prod_cert["objetivos"] = None
-    prod_cert['importe_presente_real'] = produccion["contrato_consolidado"] - certificacion["realizado_presente"] + prod_cert["anterior"]
-    prod_cert['realizado'] = produccion["realizado"]-certificacion["realizado_presente"]+prod_cert["anterior"]
-    prod_cert['presente_mes_1'] =produccion["presente_mes_1"] - certificacion["presente_mes_1"] + prod_cert['realizado']
-    prod_cert['presente_mes_2'] =produccion["presente_mes_2"] - certificacion["presente_mes_2"] + prod_cert['presente_mes_1']
-    prod_cert['presente_mes_3'] =produccion["presente_mes_3"] - certificacion["presente_mes_3"] + prod_cert['presente_mes_2']
-    prod_cert['presente_mes_4'] =produccion["presente_mes_4"] - certificacion["presente_mes_4"] + prod_cert['presente_mes_3']
-    prod_cert['presente_resto'] =produccion["presente_resto"] - certificacion["presente_resto"] + prod_cert['presente_mes_4']
-
-    prod_cert["fin"] = produccion["fin"] - certificacion["fin"]
-
-
-
-
-    # Certificación - Cobro
-    cert_cobro = {}
-    cert_cobro["anterior"] = certificacion["anterior"] - cobro["anterior"]
-    cert_cobro["presente"] = certificacion["presente"] - cobro["presente"] + cert_cobro["anterior"]
-    cert_cobro["proximo"] = certificacion["proximo"] - cobro["proximo"] + cert_cobro["presente"]
-    cert_cobro["siguiente"] = certificacion["siguiente"] - cobro["siguiente"] + cert_cobro["proximo"]
-    cert_cobro["resto"] = certificacion["resto"] - cobro["resto"] + cert_cobro["siguiente"]
-    #cert_cobro["prevision"] = certificacion["prevision"] - cobro["prevision"] + cert_cobro["resto"]
-    cert_cobro["objetivos"] = None
-    cert_cobro["nombre"] = "CERTIFIC. - COBRO (A Origen)"
-    cert_cobro["objetivos"] = None
-    # calcular certificado cobro realizado año
-    cert_cobro["realizado"] = certificacion["realizado_presente"] - cobro["realizado_presente"] + cert_cobro["anterior"]
-    cert_cobro['presente_mes_1'] = cert_cobro["realizado"] + certificacion["presente_mes_1"] - cobro['presente_mes_1']
-    cert_cobro['presente_mes_2'] = cert_cobro["presente_mes_1"] + certificacion["presente_mes_2"] - cobro['presente_mes_2']
-    cert_cobro['presente_mes_3'] = cert_cobro["presente_mes_2"] + certificacion["presente_mes_3"] - cobro['presente_mes_3']
-    cert_cobro['presente_mes_4'] = cert_cobro["presente_mes_3"] + certificacion["presente_mes_4"] - cobro['presente_mes_4']
-    cert_cobro['presente_resto'] = cert_cobro["presente_mes_4"] + certificacion["presente_resto"] - cobro['presente_resto']
-    cert_cobro["fin"] = certificacion["fin"] - cobro["fin"]
-    # Retorno final
     cobro['realizado'] = cobro["realizado_presente"]
 
     # Gastos financieros internos
@@ -2872,6 +2830,20 @@ def tableroCalcular(request):
         _gastoFinancieroInterno = gastoFinancieroInterno[key] if gastoFinancieroInterno.get(key)  else 0
         resultado[key] = float(_margenNeto) - _gastoFinancieroInterno
 
+    prod_cert = {'nombre': 'PRODUC. - CERTIFIC (A Origen)', 'presente': 0, 'prevision': 0 }
+    for key in keyCalcular:
+        _produccion = produccion[key] if produccion.get(key) else 0
+        _certificacion = certificacion[key] if certificacion.get(key)  else 0
+        prod_cert[key] = _produccion - _certificacion
+
+    cert_cobro = {'nombre': 'CERTIFIC. - COBRO (A Origen)', 'presente': 0, 'prevision': 0 }
+    for key in keyCalcular:
+        if key != "fin":
+            _certificacion = certificacion[key] if certificacion.get(key)  else 0
+            _cobro = cobro[key] if cobro.get(key) else 0
+            cert_cobro[key] = _certificacion - _cobro
+
+
     keyPresente =[
         'realizado',
         'presente_mes_1',
@@ -2882,7 +2854,8 @@ def tableroCalcular(request):
         margenBruto['presente'] += margenBruto[key]
         margenNeto['presente'] += margenNeto[key]
         capitalFinanciero['presente'] += capitalFinanciero[key]
-        # gastoFinancieroInterno['presente'] += gastoFinancieroInterno[key]
+        prod_cert['presente'] += prod_cert[key]
+        cert_cobro['presente'] += cert_cobro[key]
         resultado['presente'] += resultado[key]
 
     keyPrevision = [
@@ -2896,11 +2869,15 @@ def tableroCalcular(request):
         capitalFinanciero['prevision'] += capitalFinanciero[key]
         gastoFinancieroInterno['prevision'] += gastoFinancieroInterno[key]
         resultado['prevision'] += resultado[key]
+        prod_cert['prevision'] += prod_cert[key]
+        cert_cobro['prevision'] += cert_cobro[key]
 
     capitalFinanciero['fin'] = capitalFinanciero['anterior'] + capitalFinanciero['prevision']
     capitalFinanciero['objetivos'] = margenBruto['fin'] - capitalFinanciero['fin']
 
     gastoFinancieroInterno['fin'] = gastoFinancieroInterno['anterior'] + gastoFinancieroInterno['prevision']
+
+    cert_cobro['fin'] = cert_cobro['anterior'] + cert_cobro['prevision']
 
     resultado['fin'] = float(margenNeto['fin']) - float(gastoFinancieroInterno['fin'])
 
