@@ -2867,7 +2867,7 @@ def tableroCalcular(request):
         margenBruto['prevision'] += margenBruto[key]
         margenNeto['prevision'] += margenNeto[key]
         capitalFinanciero['prevision'] += capitalFinanciero[key]
-        gastoFinancieroInterno['prevision'] += gastoFinancieroInterno[key]
+        # gastoFinancieroInterno['prevision'] += gastoFinancieroInterno[key]
         resultado['prevision'] += resultado[key]
         prod_cert['prevision'] += prod_cert[key]
         cert_cobro['prevision'] += cert_cobro[key]
@@ -2875,6 +2875,7 @@ def tableroCalcular(request):
     capitalFinanciero['fin'] = capitalFinanciero['anterior'] + capitalFinanciero['prevision']
     capitalFinanciero['objetivos'] = margenBruto['fin'] - capitalFinanciero['fin']
 
+    gastoFinancieroInterno['prevision'] = calcularGastoFinancieroInterno(gastos, 'none', capitalFinanciero['prevision'])
     gastoFinancieroInterno['fin'] = gastoFinancieroInterno['anterior'] + gastoFinancieroInterno['prevision']
 
     cert_cobro['fin'] = cert_cobro['anterior'] + cert_cobro['prevision']
@@ -2901,12 +2902,16 @@ def tableroCalcular(request):
     serializado = DashboardSerializer(retorno, many=True)
     return serializado, {'directo': directo}
 
-def calcularGastoFinancieroInterno(gastos, key):
+def calcularGastoFinancieroInterno(gastos, key, valor=None):
     calculo = 0
-    if key == 'presente':
-        propiedad = gastos['realizado'] + gastos['presente_mes_1'] + gastos['presente_mes_2'] + gastos['presente_mes_3'] + gastos['presente_mes_4']
+    if valor == None:
+        if key == 'presente':
+            propiedad = gastos['realizado'] + gastos['presente_mes_1'] + gastos['presente_mes_2'] + gastos['presente_mes_3'] + gastos['presente_mes_4']
+        else:
+            propiedad = gastos[key]
     else:
-        propiedad = gastos[key]
+        propiedad = valor
+
     if propiedad > 0:
         cf_acreedor = gastos['cf_acreedor']
         cf_acreedor = cf_acreedor if cf_acreedor else 0
