@@ -2875,6 +2875,7 @@ def tableroCalcular(request):
     capitalFinanciero['fin'] = capitalFinanciero['anterior'] + capitalFinanciero['prevision']
     capitalFinanciero['objetivos'] = margenBruto['fin'] - capitalFinanciero['fin']
 
+    # Error aca
     gastoFinancieroInterno['prevision'] = calcularGastoFinancieroInterno(gastos, 'none', capitalFinanciero['prevision'])
     gastoFinancieroInterno['fin'] = gastoFinancieroInterno['anterior'] + gastoFinancieroInterno['prevision']
 
